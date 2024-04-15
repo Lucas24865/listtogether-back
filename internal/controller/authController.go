@@ -32,6 +32,7 @@ func (r *authController) Register(ctx *gin.Context) {
 	err := r.service.Register(ctx, input)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "validated!"})

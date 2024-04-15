@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/net/html"
 	"strings"
 )
 
@@ -32,7 +31,18 @@ func (r *authService) Register(ctx *gin.Context, user model.User) error {
 		return err
 	}
 
-	err = r.repo.Create(&user)
+	mailBool, userBool, err := r.repo.Exits(&user, ctx)
+	if err != nil {
+		return err
+	}
+	if mailBool {
+		return errors.New("mail is already registered")
+	}
+	if userBool {
+		return errors.New("user is already registered")
+	}
+
+	err = r.repo.Create(&user, ctx)
 	if err != nil {
 		return err
 	}
@@ -40,12 +50,15 @@ func (r *authService) Register(ctx *gin.Context, user model.User) error {
 }
 
 func (r *authService) Login(ctx *gin.Context, user model.User) (string, error) {
-	userSaved, err := r.repo.GetByUser(user.User)
+	userSaved, err := r.repo.GetByUser(strings.TrimSpace(strings.ToLower(user.User)), ctx)
 	if err != nil {
 		return "", err
 	}
 	if userSaved == nil {
-		return "", errors.New("invalid user")
+		userSaved, err = r.repo.GetByMail(strings.TrimSpace(strings.ToLower(user.User)), ctx)
+		if userSaved == nil {
+			return "", errors.New("invalid user or email")
+		}
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(userSaved.Pass), []byte(user.Pass))
 	if err != nil {
@@ -67,7 +80,7 @@ func beforeSave(user model.User) (model.User, error) {
 	}
 	user.Pass = string(hashedPassword)
 
-	user.User = html.EscapeString(strings.TrimSpace(user.User))
+	user.User = strings.TrimSpace(strings.ToLower(user.User))
 
 	return user, nil
 }

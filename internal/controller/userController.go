@@ -34,5 +34,5 @@ func (r *userController) Get(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": user})
+	ctx.JSON(http.StatusOK, gin.H{"name": user})
 }

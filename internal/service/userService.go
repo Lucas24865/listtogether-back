@@ -5,6 +5,7 @@ import (
 	"ListTogetherAPI/internal/repository"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"strings"
 )
 
 type UserService interface {
@@ -22,7 +23,19 @@ func NewUserService(repo repository.UserRepository) UserService {
 }
 
 func (r *userService) GetByUsername(ctx *gin.Context, user string) (*model.User, error) {
-	userSaved, err := r.repo.GetByUser(user)
+	userSaved, err := r.repo.GetByUser(strings.ToLower(user), ctx)
+	if err != nil {
+		return nil, err
+	}
+	if userSaved == nil {
+		return nil, errors.New("invalid user")
+	}
+
+	return userSaved, nil
+}
+
+func (r *userService) GetByEmail(ctx *gin.Context, user string) (*model.User, error) {
+	userSaved, err := r.repo.GetByUser(strings.ToLower(user), ctx)
 	if err != nil {
 		return nil, err
 	}
