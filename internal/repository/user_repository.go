@@ -2,6 +2,7 @@ package repository
 
 import (
 	"ListTogetherAPI/internal/model"
+	"ListTogetherAPI/utils/requests"
 	"github.com/gin-gonic/gin"
 	"time"
 )
@@ -12,6 +13,10 @@ type UserRepository interface {
 	Delete(b *model.User, ctx *gin.Context) error
 	GetByUser(u string, ctx *gin.Context) (*model.User, error)
 	GetByMail(u string, ctx *gin.Context) (*model.User, error)
+
+	GetAllGroups(u string, ctx *gin.Context) ([]*model.Group, error)
+	RemoveGroup(request requests.GroupRequest, ctx *gin.Context) error
+	AddGroup(group, user string, ctx *gin.Context) error
 	//Update(b string, m map[string]interface{}) error
 }
 
@@ -25,17 +30,29 @@ func NewUserRepository(repo *Repository) UserRepository {
 	}
 }
 
+func (r *userRepository) AddGroup(group, user string, ctx *gin.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *userRepository) RemoveGroup(request requests.GroupRequest, ctx *gin.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *userRepository) GetAllGroups(u string, ctx *gin.Context) ([]*model.Group, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (r *userRepository) Create(u *model.User, ctx *gin.Context) error {
 	u.CreatedAt = time.Now()
-	if err := r.repo.Create("users", u.User, u, ctx); err != nil {
-		return err
-	}
-	return nil
+
+	return r.repo.Create("users", u.User, u, ctx)
 }
 
 func (r *userRepository) Delete(u *model.User, ctx *gin.Context) error {
-	err := r.repo.Delete("users", u.User, ctx)
-	return err
+	return r.repo.Delete("users", u.User, ctx)
 }
 
 func (r *userRepository) GetByUser(u string, ctx *gin.Context) (*model.User, error) {
@@ -43,6 +60,7 @@ func (r *userRepository) GetByUser(u string, ctx *gin.Context) (*model.User, err
 	if err != nil {
 		return nil, err
 	}
+
 	return mapUser(user), nil
 }
 
@@ -55,6 +73,7 @@ func (r *userRepository) GetByMail(u string, ctx *gin.Context) (*model.User, err
 	if err != nil {
 		return nil, err
 	}
+
 	return mapUser(user), nil
 }
 
@@ -83,6 +102,7 @@ func mapUser(u map[string]interface{}) *model.User {
 	if u == nil {
 		return nil
 	}
+
 	user := model.User{
 		User:    u["User"].(string),
 		Pass:    u["Pass"].(string),
@@ -92,5 +112,6 @@ func mapUser(u map[string]interface{}) *model.User {
 		//Groups:    u["Groups"].([]interface{}),
 		Name:      u["Name"].(string),
 		CreatedAt: u["CreatedAt"].(time.Time)}
+
 	return &user
 }

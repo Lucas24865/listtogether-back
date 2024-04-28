@@ -9,6 +9,6 @@ type User struct {
 	Color     string `json:"color"`
 	Picture   string `json:"picture"`
 	Name      string `json:"name"`
-	Groups    []int
+	Groups    []int  `json:"groups"`
 	CreatedAt time.Time
 }
