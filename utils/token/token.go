@@ -3,7 +3,6 @@ package token
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,12 +11,7 @@ import (
 )
 
 func GenerateToken(username string) (string, error) {
-	token_lifespan, err := strconv.Atoi(os.Getenv("TOKEN_HOUR_LIFESPAN"))
-
-	if err != nil {
-		return "", err
-	}
-
+	token_lifespan := 2
 	claims := jwt.MapClaims{}
 	claims["authorized"] = true
 	claims["username"] = username

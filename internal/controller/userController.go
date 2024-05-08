@@ -27,11 +27,12 @@ func (r *userController) Get(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	_, err = r.service.GetByUsername(ctx, user)
+	userSaved, err := r.service.GetByUsernameOrEmail(user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	userSaved.Pass = ""
 
-	ctx.JSON(http.StatusOK, gin.H{"name": user})
+	ctx.JSON(http.StatusOK, gin.H{"msg": userSaved})
 }

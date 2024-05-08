@@ -3,27 +3,76 @@ package service
 import (
 	"ListTogetherAPI/internal/model"
 	"ListTogetherAPI/internal/repository"
+	"ListTogetherAPI/utils/response"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"strings"
 )
 
 type UserService interface {
-	GetByUsername(ctx *gin.Context, user string) (*model.User, error)
-	GetAllGroups(user string, ctx *gin.Context) ([]*model.Group, error)
+	GetByUsernameOrEmail(user string, ctx *gin.Context) (*model.User, error)
+	GetByUsernameOrEmailLogin(user string, ctx *gin.Context) (*model.User, error)
+	GetAllGroups(user string, ctx *gin.Context) ([]response.GroupResponse, error)
 	AcceptInvite(id, user string, ctx *gin.Context) error
+	DeclineInvite(id, user string, ctx *gin.Context) error
+	Register(user model.User, ctx *gin.Context) error
+	AddGroup(user, group string, ctx *gin.Context) error
 }
 
 type userService struct {
 	repo                repository.UserRepository
 	notificationService NotificationService
+	groupService        GroupService
 }
 
-func NewUserService(repo repository.UserRepository, notificationService NotificationService) UserService {
+func NewUserService(repo repository.UserRepository, notificationService NotificationService, groupService GroupService) UserService {
 	return &userService{
 		repo:                repo,
 		notificationService: notificationService,
+		groupService:        groupService,
 	}
+}
+
+func (s *userService) Register(user model.User, ctx *gin.Context) error {
+	err := s.exists(user.Mail, user.User, ctx)
+	if err != nil {
+		return err
+	}
+	return s.repo.Create(&user, ctx)
+}
+
+func (s *userService) GetByUsernameOrEmail(user string, ctx *gin.Context) (*model.User, error) {
+	userSaved, err := s.repo.GetByUser(strings.TrimSpace(strings.ToLower(user)), ctx)
+	if err != nil {
+		return nil, err
+	}
+	if userSaved == nil {
+		userSaved, err = s.repo.GetByMail(strings.TrimSpace(strings.ToLower(user)), ctx)
+		if userSaved == nil {
+			return nil, err
+		}
+	}
+
+	return userSaved, nil
+}
+
+func (s *userService) GetByUsernameOrEmailLogin(user string, ctx *gin.Context) (*model.User, error) {
+	userSaved, err := s.repo.GetByUserFull(strings.TrimSpace(strings.ToLower(user)), ctx)
+	if err != nil {
+		return nil, err
+	}
+	if userSaved == nil {
+		userSaved, err = s.repo.GetByMailFull(strings.TrimSpace(strings.ToLower(user)), ctx)
+		if userSaved == nil {
+			return nil, err
+		}
+	}
+
+	return userSaved, nil
+}
+
+func (s *userService) AddGroup(user, group string, ctx *gin.Context) error {
+	return s.repo.AddGroup(group, user, ctx)
 }
 
 func (s *userService) AcceptInvite(id, user string, ctx *gin.Context) error {
@@ -31,41 +80,48 @@ func (s *userService) AcceptInvite(id, user string, ctx *gin.Context) error {
 	if err != nil {
 		return err
 	}
+
 	notif, err := s.notificationService.Get(id, user, ctx)
 	if err != nil {
 		return err
 	}
+
 	return s.repo.AddGroup(notif.Data, user, ctx)
 }
 
-func (r *userService) GetByUsername(ctx *gin.Context, user string) (*model.User, error) {
-	userSaved, err := r.repo.GetByUser(strings.ToLower(user), ctx)
+func (s *userService) DeclineInvite(id, user string, ctx *gin.Context) error {
+	err := s.notificationService.Decline(id, user, ctx)
 	if err != nil {
-		return nil, err
-	}
-	if userSaved == nil {
-		return nil, errors.New("invalid user")
+		return err
 	}
 
-	return userSaved, nil
+	return nil
 }
 
-func (r *userService) GetByEmail(ctx *gin.Context, user string) (*model.User, error) {
-	userSaved, err := r.repo.GetByUser(strings.ToLower(user), ctx)
+func (s *userService) GetAllGroups(userId string, ctx *gin.Context) ([]response.GroupResponse, error) {
+	user, err := s.GetByUsernameOrEmail(userId, ctx)
 	if err != nil {
 		return nil, err
 	}
-	if userSaved == nil {
-		return nil, errors.New("invalid user")
+	groups, err := s.groupService.GetFullGroups(user.Groups, ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	return userSaved, nil
+	return groups, nil
 }
 
-func (s *userService) GetAllGroups(user string, ctx *gin.Context) ([]*model.Group, error) {
-	group, err := s.repo.GetAllGroups(user, ctx)
+func (s *userService) exists(mail, user string, ctx *gin.Context) error {
+	mailBool, userBool, err := s.repo.Exits(mail, user, ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return group, nil
+	if mailBool {
+		return errors.New("mail is already registered")
+	}
+	if userBool {
+		return errors.New("user is already registered")
+	}
+
+	return nil
 }

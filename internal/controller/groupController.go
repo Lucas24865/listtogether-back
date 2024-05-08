@@ -63,14 +63,21 @@ func (r *groupController) Create(ctx *gin.Context) {
 	admins := make([]string, 0)
 	admins = append(admins, user)
 	content.Admins = admins
+	content.CreatedBy = user
 
-	err = r.groupService.Create(&content, ctx)
+	groupId, err := r.groupService.Create(&content, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	err = r.userService.AddGroup(user, groupId, ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
 func (r *groupController) AddAdmin(ctx *gin.Context) {
@@ -80,14 +87,13 @@ func (r *groupController) AddAdmin(ctx *gin.Context) {
 		return
 	}
 
-	user := ctx.Param("user")
-	group := ctx.Param("group")
-
-	request := requests.GroupRequest{
-		Group: group,
-		Admin: admin,
-		User:  user,
+	var request requests.GroupRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
+
+	request.Admin = admin
 
 	err = r.groupService.AddAdmin(request, ctx)
 	if err != nil {
@@ -95,7 +101,7 @@ func (r *groupController) AddAdmin(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"name": user})
+	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
 func (r *groupController) Remove(ctx *gin.Context) {
@@ -118,20 +124,25 @@ func (r *groupController) Remove(ctx *gin.Context) {
 }
 
 func (r *groupController) Invite(ctx *gin.Context) {
-	/*admin, err := token.ExtractTokenUsername(ctx)
+	admin, err := token.ExtractTokenUsername(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user := ctx.Param("user")
-	group := ctx.Param("group")
+	var request requests.GroupRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	err = r.service.Remove(ctx, admin, user, group)
+	request.Admin = admin
+
+	err = r.groupService.Invite(request, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"name": user})*/
+	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }

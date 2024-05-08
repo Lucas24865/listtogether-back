@@ -13,8 +13,8 @@ type NotificationService interface {
 	Remove(id, user string, ctx *gin.Context) error
 	Accept(id, user string, ctx *gin.Context) error
 	Decline(id, user string, ctx *gin.Context) error
-	Invite(user, group string) error
-	Add(not model.Notification) error
+	SendNew(user, group, message string, ctx *gin.Context) error
+	Add(not model.Notification, ctx *gin.Context) error
 }
 
 type notificationService struct {
@@ -26,56 +26,76 @@ func (n notificationService) GetAll(user string, ctx *gin.Context) ([]*model.Not
 }
 
 func (n notificationService) Get(id, user string, ctx *gin.Context) (*model.Notification, error) {
-	err := n.havePermission(id, user, ctx)
+	notif, err := n.get(id, user, ctx)
 	if err != nil {
 		return nil, err
 	}
-	return n.repo.Get(id, ctx)
+
+	return notif, nil
 }
 
 func (n notificationService) Remove(id, user string, ctx *gin.Context) error {
-	err := n.havePermission(id, user, ctx)
+	notif, err := n.get(id, user, ctx)
 	if err != nil {
 		return err
 	}
+	if notif.Deleted {
+		return nil
+	}
+
 	return n.repo.Remove(id, ctx)
 }
 
 func (n notificationService) Accept(id, user string, ctx *gin.Context) error {
-	err := n.havePermission(id, user, ctx)
+	notif, err := n.get(id, user, ctx)
 	if err != nil {
 		return err
 	}
+	if notif.Accepted {
+		return errors.New("notification already accepted")
+	}
+	if notif.Read {
+		return errors.New("notification already declined")
+	}
+
 	return n.repo.Accept(id, ctx)
 }
 
 func (n notificationService) Decline(id, user string, ctx *gin.Context) error {
-	err := n.havePermission(id, user, ctx)
+	notif, err := n.get(id, user, ctx)
 	if err != nil {
 		return err
 	}
+	if notif.Accepted {
+		return errors.New("notification already accepted")
+	}
+	if notif.Read {
+		return errors.New("notification already declined")
+	}
+
 	return n.repo.Decline(id, ctx)
 }
 
-func (n notificationService) Invite(user, group string) error {
-	//TODO implement me
-	panic("implement me")
+func (n notificationService) SendNew(user, group, message string, ctx *gin.Context) error {
+	notif := model.NewNotification(user, group, message)
+
+	return n.repo.Add(notif, ctx)
 }
 
-func (n notificationService) Add(not model.Notification) error {
-	//TODO implement me
-	panic("implement me")
+func (n notificationService) Add(notif model.Notification, ctx *gin.Context) error {
+	return n.repo.Add(notif, ctx)
 }
 
-func (n notificationService) havePermission(notifId, user string, ctx *gin.Context) error {
+func (n notificationService) get(notifId, user string, ctx *gin.Context) (*model.Notification, error) {
 	notification, err := n.repo.Get(notifId, ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if notification.User != user {
-		return errors.New("Invalid notification")
+		return nil, errors.New("invalid notification")
 	}
-	return nil
+
+	return notification, nil
 }
 
 func NewNotificationService(repo repository.NotificationRepository) NotificationService {

@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-type Group struct {
+type List struct {
 	Picture   string
 	Name      string
 	Desc      string

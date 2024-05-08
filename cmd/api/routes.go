@@ -26,20 +26,21 @@ func mapRoutes(router *gin.Engine) {
 	user := base.Group("/user")
 	user.Use(middleware.JwtAuthMiddleware())
 	user.GET("", userController.Get)
-	user.POST("", userController.Get)
 
 	//Groups
 	groups := base.Group("/groups")
 	groups.Use(middleware.JwtAuthMiddleware())
 	groups.GET("", groupController.GetAll)
 	groups.POST("", groupController.Create)
+	groups.POST("/invite", groupController.Invite)
+	groups.POST("/admins", groupController.AddAdmin)
 
 	//Notifications
 	notifications := base.Group("/notifications")
 	notifications.Use(middleware.JwtAuthMiddleware())
 	notifications.GET("", notifController.GetAll)
-	notifications.POST("/accept/:id", notifController.Accept)
-	notifications.GET("/decline/:id", notifController.Decline)
+	notifications.PUT("/accept/:id", notifController.AcceptInvite)
+	notifications.PUT("/decline/:id", notifController.DeclineInvite)
 	notifications.DELETE("/:id", notifController.Remove)
 
 }
@@ -56,14 +57,14 @@ func newControllers() (controller.AuthController, controller.UserController, con
 	notifRepo := repository.NewNotificationRepository(repo)
 	groupRepo := repository.NewGroupRepository(repo)
 
-	authService := service.NewAuthService(userRepo)
 	notifService := service.NewNotificationService(notifRepo)
-	userService := service.NewUserService(userRepo, notifService)
-	groupService := service.NewGroupService(groupRepo)
+	groupService := service.NewGroupService(groupRepo, notifService)
+	userService := service.NewUserService(userRepo, notifService, groupService)
+	authService := service.NewAuthService(userService)
 
 	authController := controller.NewAuthController(authService)
 	userController := controller.NewUserController(userService)
-	notifController := controller.NewNotificationController(notifService)
+	notifController := controller.NewNotificationController(notifService, userService)
 	groupController := controller.NewGroupController(groupService, userService, notifService)
 
 	return authController, userController, groupController, notifController, nil

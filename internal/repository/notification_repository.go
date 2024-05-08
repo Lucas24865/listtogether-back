@@ -51,7 +51,7 @@ func (r *notificationRepository) Remove(id string, ctx *gin.Context) error {
 
 	notification.Deleted = true
 
-	return r.repo.Update("notifications", id, notification, ctx)
+	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
 func (r *notificationRepository) Accept(id string, ctx *gin.Context) error {
@@ -63,7 +63,7 @@ func (r *notificationRepository) Accept(id string, ctx *gin.Context) error {
 	notification.Accepted = true
 	notification.Read = true
 
-	return r.repo.Update("notifications", id, notification, ctx)
+	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
 func (r *notificationRepository) Decline(id string, ctx *gin.Context) error {
@@ -75,7 +75,7 @@ func (r *notificationRepository) Decline(id string, ctx *gin.Context) error {
 	notification.Accepted = false
 	notification.Read = true
 
-	return r.repo.Update("notifications", id, notification, ctx)
+	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
 func (r *notificationRepository) Add(not model.Notification, ctx *gin.Context) error {
@@ -94,10 +94,11 @@ func mapNotification(u map[string]interface{}) *model.Notification {
 		return nil
 	}
 	notification := model.Notification{
+		Id:        u["Id"].(string),
 		User:      u["User"].(string),
-		Body:      u["Body"].(string),
+		Data:      u["Data"].(string),
 		Deleted:   u["Deleted"].(bool),
-		Accepted:  u["Deleted"].(bool),
+		Accepted:  u["Accepted"].(bool),
 		Read:      u["Read"].(bool),
 		CreatedAt: u["CreatedAt"].(time.Time)}
 	return &notification

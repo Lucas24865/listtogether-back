@@ -2,7 +2,6 @@ package service
 
 import (
 	"ListTogetherAPI/internal/model"
-	"ListTogetherAPI/internal/repository"
 	"ListTogetherAPI/utils/token"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -11,61 +10,48 @@ import (
 )
 
 type AuthService interface {
-	Register(ctx *gin.Context, user model.User) error
-	Login(ctx *gin.Context, user model.User) (string, error)
+	Register(user model.User, ctx *gin.Context) error
+	Login(user model.User, ctx *gin.Context) (string, error)
 }
 
 type authService struct {
-	repo repository.UserRepository
+	userService UserService
 }
 
-func NewAuthService(repo repository.UserRepository) AuthService {
+func NewAuthService(userService UserService) AuthService {
 	return &authService{
-		repo: repo,
+		userService: userService,
 	}
 }
 
-func (r *authService) Register(ctx *gin.Context, user model.User) error {
-	user, err := beforeSave(user)
+func (r *authService) Register(user model.User, ctx *gin.Context) error {
+	userProcessed, err := beforeSave(user)
 	if err != nil {
 		return err
 	}
 
-	mailBool, userBool, err := r.repo.Exits(&user, ctx)
-	if err != nil {
-		return err
-	}
-	if mailBool {
-		return errors.New("mail is already registered")
-	}
-	if userBool {
-		return errors.New("user is already registered")
-	}
-
-	err = r.repo.Create(&user, ctx)
+	err = r.userService.Register(userProcessed, ctx)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *authService) Login(ctx *gin.Context, user model.User) (string, error) {
-	userSaved, err := r.repo.GetByUser(strings.TrimSpace(strings.ToLower(user.User)), ctx)
+func (r *authService) Login(user model.User, ctx *gin.Context) (string, error) {
+	userSaved, err := r.userService.GetByUsernameOrEmailLogin(user.User, ctx)
 	if err != nil {
 		return "", err
 	}
 	if userSaved == nil {
-		userSaved, err = r.repo.GetByMail(strings.TrimSpace(strings.ToLower(user.User)), ctx)
-		if userSaved == nil {
-			return "", errors.New("invalid user or email")
-		}
+		return "", errors.New("invalid user or email")
 	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(userSaved.Pass), []byte(user.Pass))
 	if err != nil {
 		return "", errors.New("invalid pass")
 	}
 
-	generatedToken, err := token.GenerateToken(user.User)
+	generatedToken, err := token.GenerateToken(userSaved.User)
 	if err != nil {
 		return "", err
 	}

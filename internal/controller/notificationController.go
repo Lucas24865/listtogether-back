@@ -10,17 +10,19 @@ import (
 type NotificationController interface {
 	GetAll(ctx *gin.Context)
 	Remove(ctx *gin.Context)
-	Accept(ctx *gin.Context)
-	Decline(ctx *gin.Context)
+	AcceptInvite(ctx *gin.Context)
+	DeclineInvite(ctx *gin.Context)
 }
 
 type notificationController struct {
-	service service.NotificationService
+	notificationService service.NotificationService
+	userService         service.UserService
 }
 
-func NewNotificationController(service service.NotificationService) NotificationController {
+func NewNotificationController(notificationService service.NotificationService, userService service.UserService) NotificationController {
 	return &notificationController{
-		service: service,
+		notificationService: notificationService,
+		userService:         userService,
 	}
 }
 
@@ -31,45 +33,45 @@ func (r *notificationController) Remove(ctx *gin.Context) {
 		return
 	}
 	id := ctx.Param("id")
-	err = r.service.Remove(id, user, ctx)
+	err = r.notificationService.Remove(id, user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
-func (r *notificationController) Accept(ctx *gin.Context) {
+func (r *notificationController) AcceptInvite(ctx *gin.Context) {
 	user, err := token.ExtractTokenUsername(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	id := ctx.Param("id")
-	err = r.service.Accept(id, user, ctx)
+	err = r.userService.AcceptInvite(id, user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
-func (r *notificationController) Decline(ctx *gin.Context) {
+func (r *notificationController) DeclineInvite(ctx *gin.Context) {
 	user, err := token.ExtractTokenUsername(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	id := ctx.Param("id")
-	err = r.service.Decline(id, user, ctx)
+	err = r.userService.DeclineInvite(id, user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
 func (r *notificationController) GetAll(ctx *gin.Context) {
@@ -79,7 +81,7 @@ func (r *notificationController) GetAll(ctx *gin.Context) {
 		return
 	}
 
-	notifications, err := r.service.GetAll(user, ctx)
+	notifications, err := r.notificationService.GetAll(user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

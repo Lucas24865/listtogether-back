@@ -58,7 +58,7 @@ func (r *Repository) FindFirst(collectionName string, propName string, propValue
 	return nil, nil
 }
 
-func (r *Repository) FindAll(collectionName string, propName string, propValue string, operator string, ctx *gin.Context) ([]map[string]interface{}, error) {
+func (r *Repository) FindAll(collectionName string, propName string, propValue interface{}, operator string, ctx *gin.Context) ([]map[string]interface{}, error) {
 	iter := r.Client.Collection(collectionName).Where(propName, operator, propValue).Documents(ctx)
 	list := make([]map[string]interface{}, 0)
 	for {
@@ -116,7 +116,7 @@ func mapToUpdate(data interface{}) ([]firestore.Update, error) {
 
 	v := reflect.ValueOf(data)
 	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("data must be a struct")
+		return nil, fmt.Errorf("data must be a struct not a pointer")
 	}
 
 	for i := 0; i < v.NumField(); i++ {
