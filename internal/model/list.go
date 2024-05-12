@@ -3,11 +3,10 @@ package model
 import "time"
 
 type List struct {
-	Picture   string
+	Id        string
 	Name      string
 	Desc      string
-	Id        string
-	Admins    []string
+	GroupId   string
 	CreatedAt time.Time
 	CreatedBy string
 }
