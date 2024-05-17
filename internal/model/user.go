@@ -3,12 +3,11 @@ package model
 import "time"
 
 type User struct {
-	User      string   `json:"user" binding:"required"`
-	Pass      string   `json:"pass" binding:"required"`
-	Mail      string   `json:"mail"`
-	Color     string   `json:"color"`
-	Picture   string   `json:"picture"`
-	Name      string   `json:"name"`
-	Groups    []string `json:"groups"`
+	User      string `json:"User" binding:"required"`
+	Pass      string `json:"Pass" binding:"required"`
+	Mail      string
+	Color     string
+	Picture   string
+	Name      string
 	CreatedAt time.Time
 }

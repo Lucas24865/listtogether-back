@@ -8,6 +8,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 	"os"
 	"reflect"
 
@@ -87,23 +88,38 @@ func (r *Repository) GetById(collectionName string, id string, ctx *gin.Context)
 
 	return dsnap.Data(), nil
 }
-func (r *Repository) Create(path string, id string, o interface{}, ctx *gin.Context) error {
-	if _, err := r.Client.Collection(path).Doc(id).Set(ctx, o); err != nil {
+func (r *Repository) Create(collection string, id string, o interface{}, ctx *gin.Context) error {
+	if _, err := r.Client.Collection(collection).Doc(id).Set(ctx, o); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Repository) Update(path string, id string, o interface{}, ctx *gin.Context) error {
+func (r *Repository) Update(collection string, id string, o interface{}, ctx *gin.Context) error {
 	properties, err := mapToUpdate(o)
 	if err != nil {
 		return err
 	}
 
-	if _, err = r.Client.Collection(path).Doc(id).Update(ctx, properties); err != nil {
+	if _, err = r.Client.Collection(collection).Doc(id).Update(ctx, properties); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *Repository) UpdateBatch(collectionName string, ids []string, propValue []map[string]interface{}, ctx *gin.Context) error {
+	batch := r.Client.Batch()
+	for i, id := range ids {
+		sfRef := r.Client.Collection(collectionName).Doc(id)
+		batch.Set(sfRef, propValue[i], firestore.MergeAll)
+	}
+
+	_, err := batch.Commit(ctx)
+	if err != nil {
+		log.Printf("An error has occurred: %s", err)
+	}
+
+	return err
 }
 
 func (r *Repository) Delete(path string, id string, ctx *gin.Context) error {
@@ -116,7 +132,7 @@ func mapToUpdate(data interface{}) ([]firestore.Update, error) {
 
 	v := reflect.ValueOf(data)
 	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("data must be a struct not a pointer")
+		return nil, fmt.Errorf("data must be a struct not a pointer, check the call to the repository")
 	}
 
 	for i := 0; i < v.NumField(); i++ {

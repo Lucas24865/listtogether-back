@@ -11,6 +11,7 @@ type NotificationRepository interface {
 	GetAll(user string, ctx *gin.Context) ([]*model.Notification, error)
 	Get(id string, ctx *gin.Context) (*model.Notification, error)
 	Remove(id string, ctx *gin.Context) error
+	RemoveAllRead(id string, ctx *gin.Context) error
 	Accept(id string, ctx *gin.Context) error
 	Decline(id string, ctx *gin.Context) error
 	Add(not model.Notification, ctx *gin.Context) error
@@ -52,6 +53,21 @@ func (r *notificationRepository) Remove(id string, ctx *gin.Context) error {
 	notification.Deleted = true
 
 	return r.repo.Update("notifications", id, *notification, ctx)
+}
+
+func (r *notificationRepository) RemoveAllRead(user string, ctx *gin.Context) error {
+	notifRead, err := r.repo.FindAll("notifications", "User", user, "=", ctx)
+	if err != nil {
+		return err
+	}
+	var ids []string
+	var deletedProp []map[string]interface{}
+	for _, noti := range notifRead {
+		ids = append(ids, noti["Id"].(string))
+		deletedProp = append(deletedProp, map[string]interface{}{"deleted": true})
+	}
+
+	return r.repo.UpdateBatch("notifications", ids, deletedProp, ctx)
 }
 
 func (r *notificationRepository) Accept(id string, ctx *gin.Context) error {
@@ -98,6 +114,7 @@ func mapNotification(u map[string]interface{}) *model.Notification {
 		User:      u["User"].(string),
 		Data:      u["Data"].(string),
 		Deleted:   u["Deleted"].(bool),
+		Message:   u["Message"].(string),
 		Accepted:  u["Accepted"].(bool),
 		Read:      u["Read"].(bool),
 		CreatedAt: u["CreatedAt"].(time.Time)}

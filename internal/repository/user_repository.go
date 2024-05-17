@@ -2,8 +2,6 @@ package repository
 
 import (
 	"ListTogetherAPI/internal/model"
-	"ListTogetherAPI/utils/requests"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"time"
 )
@@ -17,8 +15,6 @@ type UserRepository interface {
 	GetByUserFull(u string, ctx *gin.Context) (*model.User, error)
 	GetByMailFull(u string, ctx *gin.Context) (*model.User, error)
 
-	RemoveGroup(request requests.GroupRequest, ctx *gin.Context) error
-	AddGroup(group, user string, ctx *gin.Context) error
 	//Update(b string, m map[string]interface{}) error
 }
 
@@ -32,34 +28,10 @@ func NewUserRepository(repo *Repository) UserRepository {
 	}
 }
 
-func (u *userRepository) AddGroup(group, userId string, ctx *gin.Context) error {
-	userRaw, err := u.repo.GetById("users", userId, ctx)
-	if err != nil {
-		return err
-	}
-
-	user := mapUser(userRaw)
-
-	for _, g := range user.Groups {
-		if g == group {
-			return errors.New("el usuario ya pertenece al grupo")
-		}
-	}
-
-	user.Groups = append(user.Groups, group)
-
-	return u.repo.Update("users", userId, *user, ctx)
-}
-
-func (u *userRepository) RemoveGroup(request requests.GroupRequest, ctx *gin.Context) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (u *userRepository) Create(user *model.User, ctx *gin.Context) error {
 	user.CreatedAt = time.Now()
 
-	return u.repo.Create("users", user.User, u, ctx)
+	return u.repo.Create("users", user.User, user, ctx)
 }
 
 func (u *userRepository) Delete(user *model.User, ctx *gin.Context) error {
@@ -124,15 +96,8 @@ func (u *userRepository) Exits(mail, user string, ctx *gin.Context) (bool, bool,
 }
 
 func mapUserComplete(u map[string]interface{}) *model.User {
-	if u == nil {
+	if len(u) == 0 {
 		return nil
-	}
-
-	groups := make([]string, 0)
-	if u["Groups"] != nil {
-		for _, group := range u["Groups"].([]interface{}) {
-			groups = append(groups, group.(string))
-		}
 	}
 
 	user := model.User{
@@ -141,7 +106,6 @@ func mapUserComplete(u map[string]interface{}) *model.User {
 		Mail:      u["Mail"].(string),
 		Color:     u["Color"].(string),
 		Picture:   u["Picture"].(string),
-		Groups:    groups,
 		Name:      u["Name"].(string),
 		CreatedAt: u["CreatedAt"].(time.Time)}
 
@@ -149,9 +113,10 @@ func mapUserComplete(u map[string]interface{}) *model.User {
 }
 
 func mapUser(u map[string]interface{}) *model.User {
-	if u == nil {
+	if len(u) == 0 {
 		return nil
 	}
+
 	user := mapUserComplete(u)
 	user.Pass = ""
 

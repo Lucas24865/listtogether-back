@@ -16,7 +16,7 @@ type UserService interface {
 	AcceptInvite(id, user string, ctx *gin.Context) error
 	DeclineInvite(id, user string, ctx *gin.Context) error
 	Register(user model.User, ctx *gin.Context) error
-	AddGroup(user, group string, ctx *gin.Context) error
+	/*	AddGroup(user, group string, ctx *gin.Context) error*/
 }
 
 type userService struct {
@@ -71,22 +71,19 @@ func (s *userService) GetByUsernameOrEmailLogin(user string, ctx *gin.Context) (
 	return userSaved, nil
 }
 
-func (s *userService) AddGroup(user, group string, ctx *gin.Context) error {
-	return s.repo.AddGroup(group, user, ctx)
-}
+/*
+	func (s *userService) AddGroup(user, group string, ctx *gin.Context) error {
+		return s.repo.AddGroup(group, user, ctx)
+	}
+*/
 
 func (s *userService) AcceptInvite(id, user string, ctx *gin.Context) error {
-	err := s.notificationService.Accept(id, user, ctx)
+	notif, err := s.notificationService.Accept(id, user, ctx)
 	if err != nil {
 		return err
 	}
 
-	notif, err := s.notificationService.Get(id, user, ctx)
-	if err != nil {
-		return err
-	}
-
-	return s.repo.AddGroup(notif.Data, user, ctx)
+	return s.groupService.AddMember(user, notif.Data, ctx)
 }
 
 func (s *userService) DeclineInvite(id, user string, ctx *gin.Context) error {
@@ -103,7 +100,7 @@ func (s *userService) GetAllGroups(userId string, ctx *gin.Context) ([]response.
 	if err != nil {
 		return nil, err
 	}
-	groups, err := s.groupService.GetFullGroups(user.Groups, ctx)
+	groups, err := s.groupService.GetGroupsFull(user.User, ctx)
 	if err != nil {
 		return nil, err
 	}

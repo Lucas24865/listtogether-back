@@ -38,6 +38,8 @@ func (r *authService) Register(user model.User, ctx *gin.Context) error {
 }
 
 func (r *authService) Login(user model.User, ctx *gin.Context) (string, error) {
+	user.User = strings.TrimSpace(strings.ToLower(user.User))
+
 	userSaved, err := r.userService.GetByUsernameOrEmailLogin(user.User, ctx)
 	if err != nil {
 		return "", err
@@ -64,8 +66,8 @@ func beforeSave(user model.User) (model.User, error) {
 	if err != nil {
 		return user, err
 	}
-	user.Pass = string(hashedPassword)
 
+	user.Pass = string(hashedPassword)
 	user.User = strings.TrimSpace(strings.ToLower(user.User))
 
 	return user, nil

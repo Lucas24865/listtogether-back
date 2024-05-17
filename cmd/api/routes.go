@@ -10,7 +10,7 @@ import (
 )
 
 func mapRoutes(router *gin.Engine) {
-	authController, userController, groupController, notifController, err := newControllers()
+	authController, userController, groupController, notifController, listController, err := newControllers()
 	if err != nil {
 		log.Panicf(err.Error())
 	}
@@ -31,9 +31,9 @@ func mapRoutes(router *gin.Engine) {
 	groups := base.Group("/groups")
 	groups.Use(middleware.JwtAuthMiddleware())
 	groups.GET("", groupController.GetAll)
+	groups.GET(":id", groupController.Get)
 	groups.POST("", groupController.Create)
-	groups.POST("/invite", groupController.Invite)
-	groups.POST("/admins", groupController.AddAdmin)
+	groups.PUT("", groupController.Edit)
 
 	//Notifications
 	notifications := base.Group("/notifications")
@@ -42,30 +42,43 @@ func mapRoutes(router *gin.Engine) {
 	notifications.PUT("/accept/:id", notifController.AcceptInvite)
 	notifications.PUT("/decline/:id", notifController.DeclineInvite)
 	notifications.DELETE("/:id", notifController.Remove)
+	notifications.DELETE("", notifController.RemoveAllRead)
+
+	//Lists
+	lists := base.Group("/lists")
+	lists.GET("", listController.GetAll)
+	lists.GET("/:id", listController.Get)
+	lists.POST("", listController.Create)
+	lists.PUT("", listController.Update)
+	lists.DELETE("/:id", listController.Delete)
 
 }
 
-func newControllers() (controller.AuthController, controller.UserController, controller.GroupController, controller.NotificationController, error) {
-	err := repository.FirebaseDB().Connect()
+func newControllers() (authController controller.AuthController, userController controller.UserController, groupController controller.GroupController,
+	notifController controller.NotificationController, listController controller.ListController, err error) {
+	err = repository.FirebaseDB().Connect()
 	if err != nil {
 		log.Println(err)
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	repo := repository.FirebaseDB()
 	userRepo := repository.NewUserRepository(repo)
 	notifRepo := repository.NewNotificationRepository(repo)
 	groupRepo := repository.NewGroupRepository(repo)
+	listRepo := repository.NewListRepository(repo, groupRepo)
 
 	notifService := service.NewNotificationService(notifRepo)
 	groupService := service.NewGroupService(groupRepo, notifService)
 	userService := service.NewUserService(userRepo, notifService, groupService)
+	listService := service.NewListService(listRepo)
 	authService := service.NewAuthService(userService)
 
-	authController := controller.NewAuthController(authService)
-	userController := controller.NewUserController(userService)
-	notifController := controller.NewNotificationController(notifService, userService)
-	groupController := controller.NewGroupController(groupService, userService, notifService)
+	authController = controller.NewAuthController(authService)
+	userController = controller.NewUserController(userService)
+	notifController = controller.NewNotificationController(notifService, userService)
+	groupController = controller.NewGroupController(groupService, userService, notifService)
+	listController = controller.NewListController(listService)
 
-	return authController, userController, groupController, notifController, nil
+	return
 }

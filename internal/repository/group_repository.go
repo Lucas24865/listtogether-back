@@ -15,8 +15,10 @@ type GroupRepository interface {
 	AddAdmin(request requests.GroupRequest, ctx *gin.Context) error
 	Deactivate(request requests.GroupRequest, ctx *gin.Context) error
 	Update(group *model.Group, ctx *gin.Context) error
-	GetGroup(group string, ctx *gin.Context) (*response.GroupResponse, error)
-	GetGroups(groupNames []string, ctx *gin.Context) ([]response.GroupResponse, error)
+	GetGroupFull(group string, ctx *gin.Context) (*response.GroupResponse, error)
+	GetGroupsFull(user string, ctx *gin.Context) ([]response.GroupResponse, error)
+	GetGroupSimple(groupId string, ctx *gin.Context) (*model.Group, error)
+	GetGroupsSimple(user string, ctx *gin.Context) ([]model.Group, error)
 }
 
 type groupRepository struct {
@@ -30,12 +32,13 @@ func NewGroupRepository(repo *Repository) GroupRepository {
 }
 
 func (g groupRepository) Update(group *model.Group, ctx *gin.Context) error {
-	return g.repo.Update("groups", group.Id, group, ctx)
+	return g.repo.Update("groups", group.Id, *group, ctx)
 }
 
 func (g groupRepository) Create(group *model.Group, ctx *gin.Context) (string, error) {
 	group.CreatedAt = time.Now()
 	group.Id = uuid.New().String()
+	group.Deactivated = false
 	err := g.repo.Create("groups", group.Id, group, ctx)
 
 	return group.Id, err
@@ -60,18 +63,41 @@ func (g groupRepository) Deactivate(request requests.GroupRequest, ctx *gin.Cont
 	}
 
 	group := mapGroup(groupRaw)
-	group.Admins = append(group.Admins, request.User)
+	group.Deactivated = true
 
 	return g.repo.Update("groups", group.Id, group, ctx)
 }
 
-func (g groupRepository) GetGroup(groupName string, ctx *gin.Context) (*response.GroupResponse, error) {
-	group, err := g.repo.GetById("groups", groupName, ctx)
+func (g groupRepository) GetGroupSimple(groupId string, ctx *gin.Context) (*model.Group, error) {
+	group, err := g.repo.GetById("groups", groupId, ctx)
 	if err != nil {
 		return nil, err
 	}
 	mappedGroup := mapGroup(group)
-	members, err := g.repo.FindAll("users", "Groups", mappedGroup.Id, "array-contains", ctx)
+	return mappedGroup, nil
+}
+
+func (g groupRepository) GetGroupsSimple(user string, ctx *gin.Context) ([]model.Group, error) {
+	groups, err := g.repo.FindAll("groups", "Users", user, "array-contains", ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var mappedGroups []model.Group
+	for _, group := range groups {
+		mappedGroups = append(mappedGroups, *mapGroup(group))
+	}
+
+	return mappedGroups, nil
+}
+
+func (g groupRepository) GetGroupFull(groupId string, ctx *gin.Context) (*response.GroupResponse, error) {
+	group, err := g.repo.GetById("groups", groupId, ctx)
+	if err != nil {
+		return nil, err
+	}
+	mappedGroup := mapGroup(group)
+	members, err := g.repo.FindAll("users", "User", mappedGroup.Users, "in", ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,8 +124,8 @@ func (g groupRepository) GetGroup(groupName string, ctx *gin.Context) (*response
 	return &groupResponse, nil
 }
 
-func (g groupRepository) GetGroups(groupNames []string, ctx *gin.Context) ([]response.GroupResponse, error) {
-	groupsSaved, err := g.repo.FindAll("groups", "Id", groupNames, "in", ctx)
+func (g groupRepository) GetGroupsFull(user string, ctx *gin.Context) ([]response.GroupResponse, error) {
+	groupsSaved, err := g.repo.FindAll("groups", "Users", user, "array-contains", ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +134,7 @@ func (g groupRepository) GetGroups(groupNames []string, ctx *gin.Context) ([]res
 
 	for _, group := range groupsSaved {
 		mappedGroup := mapGroup(group)
-		members, err := g.repo.FindAll("users", "Groups", mappedGroup.Id, "array-contains", ctx)
+		members, err := g.repo.FindAll("users", "User", mappedGroup.Users, "in", ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -117,9 +143,10 @@ func (g groupRepository) GetGroups(groupNames []string, ctx *gin.Context) ([]res
 
 		for _, member := range members {
 			mappedMember := *mapUser(member)
-			mappedMembers = append(mappedMembers, mappedMember)
 			if utils.Contains(mappedGroup.Admins, mappedMember.User) {
 				admins = append(admins, mappedMember)
+			} else {
+				mappedMembers = append(mappedMembers, mappedMember)
 			}
 		}
 
@@ -143,16 +170,25 @@ func mapGroup(u map[string]interface{}) *model.Group {
 		return nil
 	}
 	admins := make([]string, 0)
+
 	for _, admin := range u["Admins"].([]interface{}) {
 		admins = append(admins, admin.(string))
 	}
+
+	users := make([]string, 0)
+	for _, user := range u["Users"].([]interface{}) {
+		users = append(users, user.(string))
+	}
+
 	group := model.Group{
-		Picture:   u["Picture"].(string),
-		Desc:      u["Desc"].(string),
-		Name:      u["Name"].(string),
-		Admins:    admins,
-		Id:        u["Id"].(string),
-		CreatedAt: u["CreatedAt"].(time.Time),
+		Picture:     u["Picture"].(string),
+		Desc:        u["Desc"].(string),
+		Name:        u["Name"].(string),
+		Admins:      admins,
+		Users:       users,
+		Deactivated: u["Deactivated"].(bool),
+		Id:          u["Id"].(string),
+		CreatedAt:   u["CreatedAt"].(time.Time),
 		//CreatedBy: u["CreatedBy"].(string),
 	}
 

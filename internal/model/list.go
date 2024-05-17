@@ -7,6 +7,9 @@ type List struct {
 	Name      string
 	Desc      string
 	GroupId   string
+	Items     []ListItem
+	Type      ListType
 	CreatedAt time.Time
 	CreatedBy string
+	Deleted   bool
 }

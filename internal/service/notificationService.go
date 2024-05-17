@@ -11,9 +11,11 @@ type NotificationService interface {
 	GetAll(user string, ctx *gin.Context) ([]*model.Notification, error)
 	Get(id, user string, ctx *gin.Context) (*model.Notification, error)
 	Remove(id, user string, ctx *gin.Context) error
-	Accept(id, user string, ctx *gin.Context) error
+	RemoveAllRead(user string, ctx *gin.Context) error
+	Accept(id, user string, ctx *gin.Context) (*model.Notification, error)
 	Decline(id, user string, ctx *gin.Context) error
 	SendNew(user, group, message string, ctx *gin.Context) error
+	SendNewMultiple(users []string, group, message string, ctx *gin.Context) error
 	Add(not model.Notification, ctx *gin.Context) error
 }
 
@@ -46,19 +48,23 @@ func (n notificationService) Remove(id, user string, ctx *gin.Context) error {
 	return n.repo.Remove(id, ctx)
 }
 
-func (n notificationService) Accept(id, user string, ctx *gin.Context) error {
+func (n notificationService) RemoveAllRead(user string, ctx *gin.Context) error {
+	return n.repo.RemoveAllRead(user, ctx)
+}
+
+func (n notificationService) Accept(id, user string, ctx *gin.Context) (*model.Notification, error) {
 	notif, err := n.get(id, user, ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if notif.Accepted {
-		return errors.New("notification already accepted")
+		return nil, errors.New("notification already accepted")
 	}
 	if notif.Read {
-		return errors.New("notification already declined")
+		return nil, errors.New("notification already declined")
 	}
 
-	return n.repo.Accept(id, ctx)
+	return notif, n.repo.Accept(id, ctx)
 }
 
 func (n notificationService) Decline(id, user string, ctx *gin.Context) error {
@@ -80,6 +86,16 @@ func (n notificationService) SendNew(user, group, message string, ctx *gin.Conte
 	notif := model.NewNotification(user, group, message)
 
 	return n.repo.Add(notif, ctx)
+}
+
+func (n notificationService) SendNewMultiple(users []string, group, message string, ctx *gin.Context) error {
+	for _, user := range users {
+		err := n.SendNew(user, group, message, ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (n notificationService) Add(notif model.Notification, ctx *gin.Context) error {
