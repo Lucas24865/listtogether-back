@@ -12,7 +12,7 @@ type NotificationController interface {
 	Remove(ctx *gin.Context)
 	AcceptInvite(ctx *gin.Context)
 	DeclineInvite(ctx *gin.Context)
-	RemoveAllRead(ctx *gin.Context)
+	RemoveAll(ctx *gin.Context)
 }
 
 type notificationController struct {
@@ -44,14 +44,14 @@ func (r *notificationController) Remove(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
-func (r *notificationController) RemoveAllRead(ctx *gin.Context) {
+func (r *notificationController) RemoveAll(ctx *gin.Context) {
 	user, err := token.ExtractTokenUsername(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err = r.notificationService.RemoveAllRead(user, ctx)
+	err = r.notificationService.RemoveAll(user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

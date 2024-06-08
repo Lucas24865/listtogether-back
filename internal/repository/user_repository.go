@@ -14,8 +14,8 @@ type UserRepository interface {
 	GetByMail(u string, ctx *gin.Context) (*model.User, error)
 	GetByUserFull(u string, ctx *gin.Context) (*model.User, error)
 	GetByMailFull(u string, ctx *gin.Context) (*model.User, error)
-
-	//Update(b string, m map[string]interface{}) error
+	Update(user *model.User, ctx *gin.Context) error
+	GetAll(ctx *gin.Context) ([]model.User, error)
 }
 
 type userRepository struct {
@@ -38,6 +38,10 @@ func (u *userRepository) Delete(user *model.User, ctx *gin.Context) error {
 	return u.repo.Delete("users", user.User, ctx)
 }
 
+func (u *userRepository) Update(user *model.User, ctx *gin.Context) error {
+	return u.repo.Update("users", user.User, *user, ctx)
+}
+
 func (u *userRepository) GetByUser(userId string, ctx *gin.Context) (*model.User, error) {
 	user, err := u.repo.GetById("users", userId, ctx)
 	if err != nil {
@@ -46,6 +50,22 @@ func (u *userRepository) GetByUser(userId string, ctx *gin.Context) (*model.User
 
 	return mapUser(user), nil
 }
+
+func (u *userRepository) GetAll(ctx *gin.Context) ([]model.User, error) {
+	usersSaved, err := u.repo.FindAll("users", "User", "", "!=", ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	users := []model.User{}
+
+	for _, userSaved := range usersSaved {
+		users = append(users, *mapUser(userSaved))
+	}
+
+	return users, nil
+}
+
 func (u *userRepository) GetByMail(userId string, ctx *gin.Context) (*model.User, error) {
 	user, err := u.repo.FindFirst("users", "Mail", userId, "==", ctx)
 	if err != nil {
@@ -54,6 +74,7 @@ func (u *userRepository) GetByMail(userId string, ctx *gin.Context) (*model.User
 
 	return mapUser(user), nil
 }
+
 func (u *userRepository) GetByUserFull(userId string, ctx *gin.Context) (*model.User, error) {
 	user, err := u.repo.GetById("users", userId, ctx)
 	if err != nil {
@@ -62,6 +83,7 @@ func (u *userRepository) GetByUserFull(userId string, ctx *gin.Context) (*model.
 
 	return mapUserComplete(user), nil
 }
+
 func (u *userRepository) GetByMailFull(userId string, ctx *gin.Context) (*model.User, error) {
 	user, err := u.repo.FindFirst("users", "Mail", userId, "==", ctx)
 	if err != nil {
@@ -107,6 +129,8 @@ func mapUserComplete(u map[string]interface{}) *model.User {
 		Color:     u["Color"].(string),
 		Picture:   u["Picture"].(string),
 		Name:      u["Name"].(string),
+		Admin:     u["Admin"].(bool),
+		LastLogin: u["LastLogin"].(time.Time),
 		CreatedAt: u["CreatedAt"].(time.Time)}
 
 	return &user

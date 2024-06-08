@@ -88,6 +88,7 @@ func (r *Repository) GetById(collectionName string, id string, ctx *gin.Context)
 
 	return dsnap.Data(), nil
 }
+
 func (r *Repository) Create(collection string, id string, o interface{}, ctx *gin.Context) error {
 	if _, err := r.Client.Collection(collection).Doc(id).Set(ctx, o); err != nil {
 		return err

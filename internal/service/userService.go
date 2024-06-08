@@ -13,9 +13,11 @@ type UserService interface {
 	GetByUsernameOrEmail(user string, ctx *gin.Context) (*model.User, error)
 	GetByUsernameOrEmailLogin(user string, ctx *gin.Context) (*model.User, error)
 	GetAllGroups(user string, ctx *gin.Context) ([]response.GroupResponse, error)
+	GetAll(user string, ctx *gin.Context) ([]model.User, error)
 	AcceptInvite(id, user string, ctx *gin.Context) error
 	DeclineInvite(id, user string, ctx *gin.Context) error
 	Register(user model.User, ctx *gin.Context) error
+	Update(user model.User, ctx *gin.Context) error
 	/*	AddGroup(user, group string, ctx *gin.Context) error*/
 }
 
@@ -41,6 +43,10 @@ func (s *userService) Register(user model.User, ctx *gin.Context) error {
 	return s.repo.Create(&user, ctx)
 }
 
+func (s *userService) Update(user model.User, ctx *gin.Context) error {
+	return s.repo.Update(&user, ctx)
+}
+
 func (s *userService) GetByUsernameOrEmail(user string, ctx *gin.Context) (*model.User, error) {
 	userSaved, err := s.repo.GetByUser(strings.TrimSpace(strings.ToLower(user)), ctx)
 	if err != nil {
@@ -54,6 +60,23 @@ func (s *userService) GetByUsernameOrEmail(user string, ctx *gin.Context) (*mode
 	}
 
 	return userSaved, nil
+}
+
+func (s *userService) GetAll(user string, ctx *gin.Context) ([]model.User, error) {
+	userSaved, err := s.repo.GetByUser(strings.TrimSpace(strings.ToLower(user)), ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !userSaved.Admin {
+		return nil, errors.New("not admin")
+	}
+
+	users, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 func (s *userService) GetByUsernameOrEmailLogin(user string, ctx *gin.Context) (*model.User, error) {

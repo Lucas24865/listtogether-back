@@ -10,6 +10,7 @@ import (
 type AuthController interface {
 	Register(ctx *gin.Context)
 	Login(ctx *gin.Context)
+	AdminLogin(ctx *gin.Context)
 }
 
 type authController struct {
@@ -46,6 +47,22 @@ func (r *authController) Login(ctx *gin.Context) {
 		return
 	}
 	token, err := r.service.Login(input, ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"Token": token})
+}
+
+func (r *authController) AdminLogin(ctx *gin.Context) {
+	var input model.User
+
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	token, err := r.service.AdminLogin(input, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

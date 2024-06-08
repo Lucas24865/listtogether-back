@@ -72,7 +72,7 @@ func (s *groupService) Edit(groupRequest *model.Group, user string, ctx *gin.Con
 			continue
 		} else {
 			message := fmt.Sprintf("%s te ha invitado al grupo: %s", user, groupInfo.Name)
-			err = s.notificationService.SendNew(u, groupRequest.Id, message, ctx)
+			err = s.notificationService.SendNew(u, groupRequest.Id, message, model.GroupInvite, ctx)
 			if err != nil {
 				return err
 			}
@@ -104,7 +104,7 @@ func (s *groupService) AddAdmin(request requests.GroupRequest, ctx *gin.Context)
 	}
 
 	message := fmt.Sprintf("%s te ha hecho administrador del grupo: %s", request.Admin, groupInfo.Name)
-	err = s.notificationService.SendNew(request.User, request.Group, message, ctx)
+	err = s.notificationService.SendNew(request.User, request.Group, message, model.GroupInvite, ctx)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (s *groupService) Invite(request requests.GroupRequest, ctx *gin.Context) e
 	}
 
 	message := fmt.Sprintf("%s te ha invitado a unirte al grupo: %s", request.Admin, groupInfo.Name)
-	err = s.notificationService.SendNew(request.User, request.Group, message, ctx)
+	err = s.notificationService.SendNew(request.User, request.Group, message, model.GroupInvite, ctx)
 	if err != nil {
 		return err
 	}

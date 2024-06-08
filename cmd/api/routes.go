@@ -42,7 +42,7 @@ func mapRoutes(router *gin.Engine) {
 	notifications.PUT("/accept/:id", notifController.AcceptInvite)
 	notifications.PUT("/decline/:id", notifController.DeclineInvite)
 	notifications.DELETE("/:id", notifController.Remove)
-	notifications.DELETE("", notifController.RemoveAllRead)
+	notifications.DELETE("", notifController.RemoveAll)
 
 	//Lists
 	lists := base.Group("/lists")
@@ -51,6 +51,12 @@ func mapRoutes(router *gin.Engine) {
 	lists.POST("", listController.Create)
 	lists.PUT("", listController.Update)
 	lists.DELETE("/:id", listController.Delete)
+
+	//admin
+	admin := base.Group("/admin")
+
+	authBase.POST("/admin/login", authController.AdminLogin)
+	admin.GET("/users", userController.AdminGet)
 
 }
 

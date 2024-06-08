@@ -5,6 +5,7 @@ import (
 	"ListTogetherAPI/utils"
 	"ListTogetherAPI/utils/response"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"time"
@@ -19,8 +20,9 @@ type ListRepository interface {
 }
 
 type listRepository struct {
-	repo      *Repository
-	groupRepo GroupRepository
+	repo             *Repository
+	groupRepo        GroupRepository
+	notificationRepo notificationRepository
 }
 
 func (l listRepository) Create(request model.List, ctx *gin.Context) error {
@@ -36,7 +38,20 @@ func (l listRepository) Create(request model.List, ctx *gin.Context) error {
 	request.CreatedAt = time.Now()
 	request.Deleted = false
 
-	return l.repo.Create("lists", request.Id, request, ctx)
+	err = l.repo.Create("lists", request.Id, request, ctx)
+	if err != nil {
+		return err
+	}
+
+	notMessage := fmt.Sprintf("%s ha agregado la lista: %s, en el grupo: %s", request.CreatedBy,
+		request.Name, group.Name)
+
+	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l listRepository) Update(request model.List, userId string, ctx *gin.Context) error {
@@ -64,7 +79,20 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 		return errors.New("invalid group")
 	}
 
-	return l.repo.Update("lists", request.Id, request, ctx)
+	err = l.repo.Update("lists", request.Id, request, ctx)
+	if err != nil {
+		return err
+	}
+
+	notMessage := fmt.Sprintf("%s ha actualizado la lista: %s, en el grupo: %s", request.CreatedBy,
+		request.Name, group.Name)
+
+	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l listRepository) Delete(userId, listId string, ctx *gin.Context) error {
@@ -83,7 +111,20 @@ func (l listRepository) Delete(userId, listId string, ctx *gin.Context) error {
 
 	list.Deleted = true
 
-	return l.repo.Update("lists", listId, *list, ctx)
+	err = l.repo.Update("lists", listId, *list, ctx)
+	if err != nil {
+		return err
+	}
+
+	notMessage := fmt.Sprintf("%s ha agredado la lista: %s, en el grupo: %s", userId,
+		list.Name, group.Name)
+
+	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l listRepository) getList(listId string, ctx *gin.Context) (*model.List, error) {

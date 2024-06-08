@@ -10,4 +10,6 @@ type User struct {
 	Picture   string
 	Name      string
 	CreatedAt time.Time
+	LastLogin time.Time
+	Admin     bool
 }

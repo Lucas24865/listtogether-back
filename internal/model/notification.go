@@ -2,12 +2,6 @@ package model
 
 import "time"
 
-const (
-	InvitationNotification = "invite"
-	MessageNotification    = "message"
-	ReminderNotification   = "reminder"
-)
-
 type Notification struct {
 	Id        string
 	User      string
@@ -17,9 +11,10 @@ type Notification struct {
 	Accepted  bool
 	Read      bool
 	CreatedAt time.Time
+	Type      NotificationType
 }
 
-func NewNotification(user, data, message string) Notification {
+func NewNotification(user, data, message string, notfType NotificationType) Notification {
 	return Notification{
 		User:      user,
 		Data:      data,
@@ -28,5 +23,6 @@ func NewNotification(user, data, message string) Notification {
 		Accepted:  false,
 		Read:      false,
 		CreatedAt: time.Now(),
+		Type:      notfType,
 	}
 }

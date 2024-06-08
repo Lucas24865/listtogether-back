@@ -11,7 +11,7 @@ type NotificationRepository interface {
 	GetAll(user string, ctx *gin.Context) ([]*model.Notification, error)
 	Get(id string, ctx *gin.Context) (*model.Notification, error)
 	Remove(id string, ctx *gin.Context) error
-	RemoveAllRead(id string, ctx *gin.Context) error
+	RemoveAll(id string, ctx *gin.Context) error
 	Accept(id string, ctx *gin.Context) error
 	Decline(id string, ctx *gin.Context) error
 	Add(not model.Notification, ctx *gin.Context) error
@@ -55,7 +55,7 @@ func (r *notificationRepository) Remove(id string, ctx *gin.Context) error {
 	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
-func (r *notificationRepository) RemoveAllRead(user string, ctx *gin.Context) error {
+func (r *notificationRepository) RemoveAll(user string, ctx *gin.Context) error {
 	notifRead, err := r.repo.FindAll("notifications", "User", user, "=", ctx)
 	if err != nil {
 		return err
@@ -63,8 +63,10 @@ func (r *notificationRepository) RemoveAllRead(user string, ctx *gin.Context) er
 	var ids []string
 	var deletedProp []map[string]interface{}
 	for _, noti := range notifRead {
-		ids = append(ids, noti["Id"].(string))
-		deletedProp = append(deletedProp, map[string]interface{}{"deleted": true})
+		if !noti["Read"].(bool) && !noti["Deleted"].(bool) {
+			ids = append(ids, noti["Id"].(string))
+			deletedProp = append(deletedProp, map[string]interface{}{"deleted": true})
+		}
 	}
 
 	return r.repo.UpdateBatch("notifications", ids, deletedProp, ctx)
@@ -97,6 +99,19 @@ func (r *notificationRepository) Decline(id string, ctx *gin.Context) error {
 func (r *notificationRepository) Add(not model.Notification, ctx *gin.Context) error {
 	not.Id = uuid.New().String()
 	return r.repo.Create("notifications", not.Id, not, ctx)
+}
+
+func (r *notificationRepository) AddMultipleGeneric(message string, to []string, ctx *gin.Context) error {
+	not := model.NewNotification("", "", message, model.GenericType)
+	for _, user := range to {
+		not.User = user
+		err := r.Add(not, ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func NewNotificationRepository(repo *Repository) NotificationRepository {

@@ -96,7 +96,7 @@ func (r *groupController) Create(ctx *gin.Context) {
 	}
 
 	message := fmt.Sprintf("%s te ha invitado al grupo: %s", user, group.Name)
-	err = r.notificationService.SendNewMultiple(content.Users, groupId, message, ctx)
+	err = r.notificationService.SendNewMultiple(content.Users, groupId, message, model.GroupInvite, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
