@@ -7,21 +7,11 @@ import (
 	"time"
 )
 
-type NotificationRepository interface {
-	GetAll(user string, ctx *gin.Context) ([]*model.Notification, error)
-	Get(id string, ctx *gin.Context) (*model.Notification, error)
-	Remove(id string, ctx *gin.Context) error
-	RemoveAll(id string, ctx *gin.Context) error
-	Accept(id string, ctx *gin.Context) error
-	Decline(id string, ctx *gin.Context) error
-	Add(not model.Notification, ctx *gin.Context) error
-}
-
-type notificationRepository struct {
+type NotificationRepository struct {
 	repo *Repository
 }
 
-func (r *notificationRepository) Get(id string, ctx *gin.Context) (*model.Notification, error) {
+func (r *NotificationRepository) Get(id string, ctx *gin.Context) (*model.Notification, error) {
 	notification, err := r.repo.GetById("notifications", id, ctx)
 	if err != nil {
 		return nil, err
@@ -30,7 +20,7 @@ func (r *notificationRepository) Get(id string, ctx *gin.Context) (*model.Notifi
 	return mapNotification(notification), nil
 }
 
-func (r *notificationRepository) GetAll(u string, ctx *gin.Context) ([]*model.Notification, error) {
+func (r *NotificationRepository) GetAll(u string, ctx *gin.Context) ([]*model.Notification, error) {
 	notificationsRaw, err := r.repo.FindAll("notifications", "User", u, "==", ctx)
 	if err != nil {
 		return nil, err
@@ -44,7 +34,7 @@ func (r *notificationRepository) GetAll(u string, ctx *gin.Context) ([]*model.No
 	return notifications, nil
 }
 
-func (r *notificationRepository) Remove(id string, ctx *gin.Context) error {
+func (r *NotificationRepository) Remove(id string, ctx *gin.Context) error {
 	notification, err := r.Get(id, ctx)
 	if err != nil {
 		return err
@@ -55,7 +45,7 @@ func (r *notificationRepository) Remove(id string, ctx *gin.Context) error {
 	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
-func (r *notificationRepository) RemoveAll(user string, ctx *gin.Context) error {
+func (r *NotificationRepository) RemoveAll(user string, ctx *gin.Context) error {
 	notifRead, err := r.repo.FindAll("notifications", "User", user, "=", ctx)
 	if err != nil {
 		return err
@@ -72,7 +62,7 @@ func (r *notificationRepository) RemoveAll(user string, ctx *gin.Context) error 
 	return r.repo.UpdateBatch("notifications", ids, deletedProp, ctx)
 }
 
-func (r *notificationRepository) Accept(id string, ctx *gin.Context) error {
+func (r *NotificationRepository) Accept(id string, ctx *gin.Context) error {
 	notification, err := r.Get(id, ctx)
 	if err != nil {
 		return err
@@ -84,7 +74,7 @@ func (r *notificationRepository) Accept(id string, ctx *gin.Context) error {
 	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
-func (r *notificationRepository) Decline(id string, ctx *gin.Context) error {
+func (r *NotificationRepository) Decline(id string, ctx *gin.Context) error {
 	notification, err := r.Get(id, ctx)
 	if err != nil {
 		return err
@@ -96,12 +86,12 @@ func (r *notificationRepository) Decline(id string, ctx *gin.Context) error {
 	return r.repo.Update("notifications", id, *notification, ctx)
 }
 
-func (r *notificationRepository) Add(not model.Notification, ctx *gin.Context) error {
+func (r *NotificationRepository) Add(not model.Notification, ctx *gin.Context) error {
 	not.Id = uuid.New().String()
 	return r.repo.Create("notifications", not.Id, not, ctx)
 }
 
-func (r *notificationRepository) AddMultipleGeneric(message string, to []string, ctx *gin.Context) error {
+func (r *NotificationRepository) AddMultipleGeneric(message string, to []string, ctx *gin.Context) error {
 	not := model.NewNotification("", "", message, model.GenericType)
 	for _, user := range to {
 		not.User = user
@@ -115,7 +105,7 @@ func (r *notificationRepository) AddMultipleGeneric(message string, to []string,
 }
 
 func NewNotificationRepository(repo *Repository) NotificationRepository {
-	return &notificationRepository{
+	return NotificationRepository{
 		repo: repo,
 	}
 }
@@ -132,6 +122,7 @@ func mapNotification(u map[string]interface{}) *model.Notification {
 		Message:   u["Message"].(string),
 		Accepted:  u["Accepted"].(bool),
 		Read:      u["Read"].(bool),
-		CreatedAt: u["CreatedAt"].(time.Time)}
+		CreatedAt: u["CreatedAt"].(time.Time),
+		Type:      model.NotificationType(u["Type"].(string))}
 	return &notification
 }

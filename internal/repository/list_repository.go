@@ -22,7 +22,7 @@ type ListRepository interface {
 type listRepository struct {
 	repo             *Repository
 	groupRepo        GroupRepository
-	notificationRepo notificationRepository
+	notificationRepo NotificationRepository
 }
 
 func (l listRepository) Create(request model.List, ctx *gin.Context) error {
@@ -84,7 +84,7 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 		return err
 	}
 
-	notMessage := fmt.Sprintf("%s ha actualizado la lista: %s, en el grupo: %s", request.CreatedBy,
+	notMessage := fmt.Sprintf("%s ha actualizado la lista: %s, en el grupo: %s", userId,
 		request.Name, group.Name)
 
 	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
@@ -136,10 +136,11 @@ func (l listRepository) getList(listId string, ctx *gin.Context) (*model.List, e
 	return mapList(list), nil
 }
 
-func NewListRepository(repo *Repository, groupRepo GroupRepository) ListRepository {
+func NewListRepository(repo *Repository, groupRepo GroupRepository, notificationRepo NotificationRepository) ListRepository {
 	return &listRepository{
-		repo:      repo,
-		groupRepo: groupRepo,
+		repo:             repo,
+		groupRepo:        groupRepo,
+		notificationRepo: notificationRepo,
 	}
 }
 

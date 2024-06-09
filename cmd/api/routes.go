@@ -72,7 +72,7 @@ func newControllers() (authController controller.AuthController, userController 
 	userRepo := repository.NewUserRepository(repo)
 	notifRepo := repository.NewNotificationRepository(repo)
 	groupRepo := repository.NewGroupRepository(repo)
-	listRepo := repository.NewListRepository(repo, groupRepo)
+	listRepo := repository.NewListRepository(repo, groupRepo, notifRepo)
 
 	notifService := service.NewNotificationService(notifRepo)
 	groupService := service.NewGroupService(groupRepo, notifService)
