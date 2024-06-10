@@ -18,11 +18,13 @@ type AuthService interface {
 
 type authService struct {
 	userService UserService
+	logService  LogsService
 }
 
-func NewAuthService(userService UserService) AuthService {
+func NewAuthService(userService UserService, logService LogsService) AuthService {
 	return &authService{
 		userService: userService,
+		logService:  logService,
 	}
 }
 
@@ -57,6 +59,11 @@ func (r *authService) Login(user model.User, ctx *gin.Context) (string, error) {
 
 	userSaved.LastLogin = time.Now()
 	err = r.userService.Update(*userSaved, ctx)
+	if err != nil {
+		return "", err
+	}
+
+	err = r.logService.AddLogin(userSaved.User, ctx)
 	if err != nil {
 		return "", err
 	}

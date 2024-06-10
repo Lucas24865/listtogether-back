@@ -9,7 +9,6 @@ import (
 
 type UserController interface {
 	Get(ctx *gin.Context)
-	AdminGet(ctx *gin.Context)
 }
 
 type userController struct {
@@ -36,19 +35,4 @@ func (r *userController) Get(ctx *gin.Context) {
 	userSaved.Pass = ""
 
 	ctx.JSON(http.StatusOK, gin.H{"msg": userSaved})
-}
-
-func (r *userController) AdminGet(ctx *gin.Context) {
-	user, err := token.ExtractTokenUsername(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	users, err := r.service.GetAll(user, ctx)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"msg": users})
 }

@@ -10,7 +10,8 @@ import (
 )
 
 func mapRoutes(router *gin.Engine) {
-	authController, userController, groupController, notifController, listController, err := newControllers()
+	authController, userController, groupController, notifController, listController,
+		adminController, err := newControllers()
 	if err != nil {
 		log.Panicf(err.Error())
 	}
@@ -56,16 +57,18 @@ func mapRoutes(router *gin.Engine) {
 	admin := base.Group("/admin")
 
 	authBase.POST("/admin/login", authController.AdminLogin)
-	admin.GET("/users", userController.AdminGet)
+	admin.GET("/users", adminController.GetUsers)
+	admin.GET("/dash/stats", adminController.GetDashStats)
+	admin.POST("/dash/graphs", adminController.GetDashGraphs)
 
 }
 
 func newControllers() (authController controller.AuthController, userController controller.UserController, groupController controller.GroupController,
-	notifController controller.NotificationController, listController controller.ListController, err error) {
+	notifController controller.NotificationController, listController controller.ListController, adminController controller.AdminController, err error) {
 	err = repository.FirebaseDB().Connect()
 	if err != nil {
 		log.Println(err)
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	repo := repository.FirebaseDB()
@@ -73,18 +76,22 @@ func newControllers() (authController controller.AuthController, userController 
 	notifRepo := repository.NewNotificationRepository(repo)
 	groupRepo := repository.NewGroupRepository(repo)
 	listRepo := repository.NewListRepository(repo, groupRepo, notifRepo)
+	adminRepo := repository.NewAdminRepository(repo)
 
+	logsService := service.NewLogService(repo)
 	notifService := service.NewNotificationService(notifRepo)
 	groupService := service.NewGroupService(groupRepo, notifService)
 	userService := service.NewUserService(userRepo, notifService, groupService)
 	listService := service.NewListService(listRepo)
-	authService := service.NewAuthService(userService)
+	authService := service.NewAuthService(userService, logsService)
+	adminService := service.NewAdminService(userRepo, adminRepo, groupService)
 
 	authController = controller.NewAuthController(authService)
 	userController = controller.NewUserController(userService)
 	notifController = controller.NewNotificationController(notifService, userService)
 	groupController = controller.NewGroupController(groupService, userService, notifService)
 	listController = controller.NewListController(listService)
+	adminController = controller.NewAdminController(adminService)
 
 	return
 }

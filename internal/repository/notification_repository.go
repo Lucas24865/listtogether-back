@@ -21,7 +21,7 @@ func (r *NotificationRepository) Get(id string, ctx *gin.Context) (*model.Notifi
 }
 
 func (r *NotificationRepository) GetAll(u string, ctx *gin.Context) ([]*model.Notification, error) {
-	notificationsRaw, err := r.repo.FindAll("notifications", "User", u, "==", ctx)
+	notificationsRaw, err := r.repo.FindAllTwoProps("notifications", "User", u, "==", "Deleted", false, "==", ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,14 +46,14 @@ func (r *NotificationRepository) Remove(id string, ctx *gin.Context) error {
 }
 
 func (r *NotificationRepository) RemoveAll(user string, ctx *gin.Context) error {
-	notifRead, err := r.repo.FindAll("notifications", "User", user, "=", ctx)
+	notifRead, err := r.repo.FindAllTwoProps("notifications", "User", user, "==", "Deleted", false, "==", ctx)
 	if err != nil {
 		return err
 	}
 	var ids []string
 	var deletedProp []map[string]interface{}
 	for _, noti := range notifRead {
-		if !noti["Read"].(bool) && !noti["Deleted"].(bool) {
+		if noti["Read"].(bool) && noti["Type"].(string) == model.GroupInvite || noti["Type"].(string) == model.GenericType {
 			ids = append(ids, noti["Id"].(string))
 			deletedProp = append(deletedProp, map[string]interface{}{"deleted": true})
 		}

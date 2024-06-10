@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cloud.google.com/go/firestore/apiv1/firestorepb"
 	"context"
 	"errors"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
 	"os"
 	"reflect"
 
@@ -75,6 +75,38 @@ func (r *Repository) FindAll(collectionName string, propName string, propValue i
 	return list, nil
 }
 
+func (r *Repository) GetAll(collectionName string, ctx *gin.Context) ([]map[string]interface{}, error) {
+	iter := r.Client.Collection(collectionName).Documents(ctx)
+	list := make([]map[string]interface{}, 0)
+	for {
+		doc, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, doc.Data())
+	}
+	return list, nil
+}
+
+func (r *Repository) FindAllTwoProps(collectionName string, propName1 string, propValue1 interface{}, operator1 string, propName2 string, propValue2 interface{}, operator2 string, ctx *gin.Context) ([]map[string]interface{}, error) {
+	iter := r.Client.Collection(collectionName).Where(propName1, operator1, propValue1).Where(propName2, operator2, propValue2).Documents(ctx)
+	list := make([]map[string]interface{}, 0)
+	for {
+		doc, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, doc.Data())
+	}
+	return list, nil
+}
+
 func (r *Repository) GetById(collectionName string, id string, ctx *gin.Context) (map[string]interface{}, error) {
 	dsnap, err := r.Client.Collection(collectionName).Doc(id).Get(ctx)
 	if err != nil {
@@ -109,23 +141,49 @@ func (r *Repository) Update(collection string, id string, o interface{}, ctx *gi
 }
 
 func (r *Repository) UpdateBatch(collectionName string, ids []string, propValue []map[string]interface{}, ctx *gin.Context) error {
-	batch := r.Client.Batch()
-	for i, id := range ids {
+	batch := r.Client.BulkWriter(ctx)
+	for _, id := range ids {
 		sfRef := r.Client.Collection(collectionName).Doc(id)
-		batch.Set(sfRef, propValue[i], firestore.MergeAll)
-	}
 
-	_, err := batch.Commit(ctx)
-	if err != nil {
-		log.Printf("An error has occurred: %s", err)
-	}
+		prop := []firestore.Update{
+			{Path: "Deleted",
+				Value: true},
+		}
 
-	return err
+		log1, log2 := batch.Update(sfRef, prop)
+		fmt.Println(log1, log2)
+	}
+	batch.Flush()
+
+	return nil
 }
 
 func (r *Repository) Delete(path string, id string, ctx *gin.Context) error {
 	_, err := r.Client.Collection(path).Doc(id).Delete(ctx)
 	return err
+}
+
+func (r *Repository) Count(collection string, from, to *Filters, ctx *gin.Context) (int64, error) {
+	dsnap := r.Client.Collection(collection)
+	query := dsnap.Query
+
+	if from != nil && to != nil {
+		query = dsnap.Where(from.Prop, from.Operator, from.Value).Where(to.Prop, to.Operator, to.Value)
+	}
+
+	aggregationQuery := query.NewAggregationQuery().WithCount("all")
+	results, err := aggregationQuery.Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	count, ok := results["all"]
+	if !ok {
+		return 0, errors.New("firestore: couldn't get alias for COUNT from results")
+	}
+
+	countValue := count.(*firestorepb.Value)
+	return countValue.GetIntegerValue(), nil
 }
 
 func mapToUpdate(data interface{}) ([]firestore.Update, error) {
@@ -146,4 +204,10 @@ func mapToUpdate(data interface{}) ([]firestore.Update, error) {
 	}
 
 	return updates, nil
+}
+
+type Filters struct {
+	Prop     string
+	Operator string
+	Value    interface{}
 }
