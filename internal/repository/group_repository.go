@@ -17,6 +17,7 @@ type GroupRepository interface {
 	Update(group *model.Group, ctx *gin.Context) error
 	GetGroupFull(group string, ctx *gin.Context) (*response.GroupResponse, error)
 	GetGroupsFull(user string, ctx *gin.Context) ([]response.GroupResponse, error)
+	GetGroupsFullAdmin(ctx *gin.Context) ([]response.GroupResponse, error)
 	GetGroupSimple(groupId string, ctx *gin.Context) (*model.Group, error)
 	GetGroupsSimple(user string, ctx *gin.Context) ([]model.Group, error)
 }
@@ -126,6 +127,47 @@ func (g groupRepository) GetGroupFull(groupId string, ctx *gin.Context) (*respon
 
 func (g groupRepository) GetGroupsFull(user string, ctx *gin.Context) ([]response.GroupResponse, error) {
 	groupsSaved, err := g.repo.FindAll("groups", "Users", user, "array-contains", ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var groupsResponse []response.GroupResponse
+
+	for _, group := range groupsSaved {
+		mappedGroup := mapGroup(group)
+		members, err := g.repo.FindAll("users", "User", mappedGroup.Users, "in", ctx)
+		if err != nil {
+			return nil, err
+		}
+		var mappedMembers []model.User
+		var admins []model.User
+
+		for _, member := range members {
+			mappedMember := *mapUser(member)
+			if utils.Contains(mappedGroup.Admins, mappedMember.User) {
+				admins = append(admins, mappedMember)
+			} else {
+				mappedMembers = append(mappedMembers, mappedMember)
+			}
+		}
+
+		groupResponse := response.GroupResponse{
+			Id:        mappedGroup.Id,
+			Name:      mappedGroup.Name,
+			Desc:      mappedGroup.Desc,
+			CreatedAt: mappedGroup.CreatedAt,
+			Members:   mappedMembers,
+			Admins:    admins,
+		}
+
+		groupsResponse = append(groupsResponse, groupResponse)
+
+	}
+	return groupsResponse, nil
+}
+
+func (g groupRepository) GetGroupsFullAdmin(ctx *gin.Context) ([]response.GroupResponse, error) {
+	groupsSaved, err := g.repo.GetAll("groups", ctx)
 	if err != nil {
 		return nil, err
 	}

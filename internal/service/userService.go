@@ -4,6 +4,7 @@ import (
 	"ListTogetherAPI/internal/model"
 	"ListTogetherAPI/internal/repository"
 	"ListTogetherAPI/utils/response"
+	"ListTogetherAPI/utils/token"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -17,6 +18,7 @@ type UserService interface {
 	DeclineInvite(id, user string, ctx *gin.Context) error
 	Register(user model.User, ctx *gin.Context) error
 	Update(user model.User, ctx *gin.Context) error
+	Edit(user model.User, ctx *gin.Context) error
 	/*	AddGroup(user, group string, ctx *gin.Context) error*/
 }
 
@@ -43,6 +45,24 @@ func (s *userService) Register(user model.User, ctx *gin.Context) error {
 }
 
 func (s *userService) Update(user model.User, ctx *gin.Context) error {
+	return s.repo.Update(&user, ctx)
+}
+
+func (s *userService) Edit(user model.User, ctx *gin.Context) error {
+	userSaved, err := s.GetByUsernameOrEmail(user.User, ctx)
+	if err != nil {
+		return err
+	}
+
+	if userSaved.Mail != user.Mail {
+		return errors.New("invalid mail")
+	}
+
+	user, err = token.BeforeSave(user)
+	if err != nil {
+		return err
+	}
+
 	return s.repo.Update(&user, ctx)
 }
 

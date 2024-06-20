@@ -18,6 +18,7 @@ type GroupService interface {
 	Invite(request requests.GroupRequest, ctx *gin.Context) error
 	Get(id, user string, ctx *gin.Context) (*model.Group, error)
 	GetGroupsFull(user string, ctx *gin.Context) ([]response.GroupResponse, error)
+	GetGroupsFullAdmin(ctx *gin.Context) ([]response.GroupResponse, error)
 	Edit(group *model.Group, user string, ctx *gin.Context) error
 }
 
@@ -46,6 +47,15 @@ func (s *groupService) Get(id, user string, ctx *gin.Context) (*model.Group, err
 
 func (s *groupService) GetGroupsFull(user string, ctx *gin.Context) ([]response.GroupResponse, error) {
 	groupInfo, err := s.repo.GetGroupsFull(user, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return groupInfo, nil
+}
+
+func (s *groupService) GetGroupsFullAdmin(ctx *gin.Context) ([]response.GroupResponse, error) {
+	groupInfo, err := s.repo.GetGroupsFullAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}

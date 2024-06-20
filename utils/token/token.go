@@ -1,7 +1,9 @@
 package token
 
 import (
+	"ListTogetherAPI/internal/model"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"os"
 	"strings"
 	"time"
@@ -68,4 +70,16 @@ func ExtractTokenUsername(c *gin.Context) (string, error) {
 		return username, nil
 	}
 	return "", nil
+}
+
+func BeforeSave(user model.User) (model.User, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Pass), bcrypt.DefaultCost)
+	if err != nil {
+		return user, err
+	}
+
+	user.Pass = string(hashedPassword)
+	user.User = strings.TrimSpace(strings.ToLower(user.User))
+
+	return user, nil
 }

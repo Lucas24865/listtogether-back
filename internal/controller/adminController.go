@@ -10,6 +10,7 @@ import (
 
 type AdminController interface {
 	GetUsers(ctx *gin.Context)
+	GetGroups(ctx *gin.Context)
 	GetDashStats(ctx *gin.Context)
 	GetDashGraphs(ctx *gin.Context)
 }
@@ -31,6 +32,21 @@ func (r *adminController) GetUsers(ctx *gin.Context) {
 		return
 	}
 	users, err := r.service.GetAll(user, ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"msg": users})
+}
+
+func (r *adminController) GetGroups(ctx *gin.Context) {
+	user, err := token.ExtractTokenUsername(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	users, err := r.service.GetAllGroups(user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

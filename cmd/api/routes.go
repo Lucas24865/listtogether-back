@@ -27,6 +27,7 @@ func mapRoutes(router *gin.Engine) {
 	user := base.Group("/user")
 	user.Use(middleware.JwtAuthMiddleware())
 	user.GET("", userController.Get)
+	user.POST("", userController.Update)
 
 	//Groups
 	groups := base.Group("/groups")
@@ -58,6 +59,7 @@ func mapRoutes(router *gin.Engine) {
 
 	authBase.POST("/admin/login", authController.AdminLogin)
 	admin.GET("/users", adminController.GetUsers)
+	admin.GET("/groups", adminController.GetGroups)
 	admin.GET("/dash/stats", adminController.GetDashStats)
 	admin.POST("/dash/graphs", adminController.GetDashGraphs)
 

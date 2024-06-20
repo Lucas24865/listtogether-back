@@ -29,7 +29,7 @@ func NewAuthService(userService UserService, logService LogsService) AuthService
 }
 
 func (r *authService) Register(user model.User, ctx *gin.Context) error {
-	userProcessed, err := beforeSave(user)
+	userProcessed, err := token.BeforeSave(user)
 	if err != nil {
 		return err
 	}
@@ -107,16 +107,4 @@ func (r *authService) AdminLogin(user model.User, ctx *gin.Context) (string, err
 	}
 
 	return generatedToken, nil
-}
-
-func beforeSave(user model.User) (model.User, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Pass), bcrypt.DefaultCost)
-	if err != nil {
-		return user, err
-	}
-
-	user.Pass = string(hashedPassword)
-	user.User = strings.TrimSpace(strings.ToLower(user.User))
-
-	return user, nil
 }

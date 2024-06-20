@@ -12,6 +12,7 @@ import (
 
 type AdminService interface {
 	GetAll(user string, ctx *gin.Context) ([]model.User, error)
+	GetAllGroups(user string, ctx *gin.Context) ([]response.GroupResponse, error)
 	GetDashStats(user string, ctx *gin.Context) (*response.AdminDashStatsResponse, error)
 	GetDashGraphs(user string, from, to time.Time, ctx *gin.Context) (*response.AdminDashGraphResponse, error)
 }
@@ -45,6 +46,23 @@ func (s *adminService) GetAll(user string, ctx *gin.Context) ([]model.User, erro
 	}
 
 	return users, nil
+}
+
+func (s *adminService) GetAllGroups(user string, ctx *gin.Context) ([]response.GroupResponse, error) {
+	userSaved, err := s.userRepo.GetByUser(strings.TrimSpace(strings.ToLower(user)), ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !userSaved.Admin {
+		return nil, errors.New("not admin")
+	}
+
+	groups, err := s.groupService.GetGroupsFullAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
 }
 
 func (s *adminService) GetDashStats(user string, ctx *gin.Context) (*response.AdminDashStatsResponse, error) {
