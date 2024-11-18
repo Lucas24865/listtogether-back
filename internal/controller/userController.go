@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"ListTogetherAPI/internal/model"
 	"ListTogetherAPI/internal/service"
+	"ListTogetherAPI/utils/requests"
 	"ListTogetherAPI/utils/token"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -46,7 +46,7 @@ func (r *userController) Update(ctx *gin.Context) {
 		return
 	}
 
-	var content model.User
+	var content requests.UserUpdateRequest
 	if err := ctx.ShouldBindJSON(&content); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -58,6 +58,10 @@ func (r *userController) Update(ctx *gin.Context) {
 	}
 
 	if err := r.service.Edit(content, ctx); err != nil {
+		if err.Error() == "invalid pass" {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

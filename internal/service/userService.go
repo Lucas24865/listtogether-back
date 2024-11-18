@@ -3,10 +3,11 @@ package service
 import (
 	"ListTogetherAPI/internal/model"
 	"ListTogetherAPI/internal/repository"
+	"ListTogetherAPI/utils/requests"
 	"ListTogetherAPI/utils/response"
-	"ListTogetherAPI/utils/token"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ type UserService interface {
 	DeclineInvite(id, user string, ctx *gin.Context) error
 	Register(user model.User, ctx *gin.Context) error
 	Update(user model.User, ctx *gin.Context) error
-	Edit(user model.User, ctx *gin.Context) error
+	Edit(user requests.UserUpdateRequest, ctx *gin.Context) error
 	/*	AddGroup(user, group string, ctx *gin.Context) error*/
 }
 
@@ -48,22 +49,32 @@ func (s *userService) Update(user model.User, ctx *gin.Context) error {
 	return s.repo.Update(&user, ctx)
 }
 
-func (s *userService) Edit(user model.User, ctx *gin.Context) error {
-	userSaved, err := s.GetByUsernameOrEmail(user.User, ctx)
+func (s *userService) Edit(user requests.UserUpdateRequest, ctx *gin.Context) error {
+	userSaved, err := s.GetByUsernameOrEmailLogin(user.User, ctx)
 	if err != nil {
 		return err
 	}
 
-	if userSaved.Mail != user.Mail {
-		return errors.New("invalid mail")
-	}
-
-	user, err = token.BeforeSave(user)
+	err = bcrypt.CompareHashAndPassword([]byte(userSaved.Pass), []byte(user.OldPass))
 	if err != nil {
-		return err
+		return errors.New("invalid pass")
 	}
 
-	return s.repo.Update(&user, ctx)
+	if user.NewPass != "" {
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.NewPass), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+
+		user.NewPass = string(hashedPassword)
+		userSaved.Pass = user.NewPass
+	}
+
+	userSaved.Name = user.Name
+	userSaved.Color = user.Color
+
+	return s.repo.Update(userSaved, ctx)
 }
 
 func (s *userService) GetByUsernameOrEmail(user string, ctx *gin.Context) (*model.User, error) {
