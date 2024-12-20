@@ -9,6 +9,7 @@ import (
 
 type NotificationController interface {
 	GetAll(ctx *gin.Context)
+	GetAllWithDeleted(ctx *gin.Context)
 	Remove(ctx *gin.Context)
 	AcceptInvite(ctx *gin.Context)
 	DeclineInvite(ctx *gin.Context)
@@ -100,6 +101,22 @@ func (r *notificationController) GetAll(ctx *gin.Context) {
 	}
 
 	notifications, err := r.notificationService.GetAll(user, ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"msg": notifications})
+}
+
+func (r *notificationController) GetAllWithDeleted(ctx *gin.Context) {
+	user, err := token.ExtractTokenUsername(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	notifications, err := r.notificationService.GetAllWithDeleted(user, ctx)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

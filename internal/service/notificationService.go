@@ -5,17 +5,19 @@ import (
 	"ListTogetherAPI/internal/repository"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"sort"
 )
 
 type NotificationService interface {
 	GetAll(user string, ctx *gin.Context) ([]*model.Notification, error)
+	GetAllWithDeleted(user string, ctx *gin.Context) ([]*model.Notification, error)
 	Get(id, user string, ctx *gin.Context) (*model.Notification, error)
 	Remove(id, user string, ctx *gin.Context) error
 	RemoveAll(user string, ctx *gin.Context) error
 	Accept(id, user string, ctx *gin.Context) (*model.Notification, error)
 	Decline(id, user string, ctx *gin.Context) error
-	SendNew(user, group, message string, notType model.NotificationType, ctx *gin.Context) error
-	SendNewMultiple(users []string, group, message string, notType model.NotificationType, ctx *gin.Context) error
+	SendNew(user, data, message, userOwner, group string, notType model.NotificationType, ctx *gin.Context) error
+	SendNewMultiple(users []string, data, message, userOwner, group string, notType model.NotificationType, ctx *gin.Context) error
 	Add(not model.Notification, ctx *gin.Context) error
 }
 
@@ -25,6 +27,14 @@ type notificationService struct {
 
 func (n notificationService) GetAll(user string, ctx *gin.Context) ([]*model.Notification, error) {
 	return n.repo.GetAll(user, ctx)
+}
+
+func (n notificationService) GetAllWithDeleted(user string, ctx *gin.Context) ([]*model.Notification, error) {
+	notifs, err := n.repo.GetAllWithDeleted(user, ctx)
+	sort.Slice(notifs, func(i, j int) bool {
+		return notifs[i].CreatedAt.After(notifs[j].CreatedAt)
+	})
+	return notifs, err
 }
 
 func (n notificationService) Get(id, user string, ctx *gin.Context) (*model.Notification, error) {
@@ -82,15 +92,15 @@ func (n notificationService) Decline(id, user string, ctx *gin.Context) error {
 	return n.repo.Decline(id, ctx)
 }
 
-func (n notificationService) SendNew(user, group, message string, notType model.NotificationType, ctx *gin.Context) error {
-	notif := model.NewNotification(user, group, message, notType)
+func (n notificationService) SendNew(user, data, message, userOwner, group string, notType model.NotificationType, ctx *gin.Context) error {
+	notif := model.NewNotification(user, data, message, userOwner, group, notType)
 
 	return n.repo.Add(notif, ctx)
 }
 
-func (n notificationService) SendNewMultiple(users []string, group, message string, notType model.NotificationType, ctx *gin.Context) error {
+func (n notificationService) SendNewMultiple(users []string, data, message, userOwner, group string, notType model.NotificationType, ctx *gin.Context) error {
 	for _, user := range users {
-		err := n.SendNew(user, group, message, notType, ctx)
+		err := n.SendNew(user, data, message, userOwner, group, notType, ctx)
 		if err != nil {
 			return err
 		}

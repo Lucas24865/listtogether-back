@@ -34,6 +34,21 @@ func (r *NotificationRepository) GetAll(u string, ctx *gin.Context) ([]*model.No
 	return notifications, nil
 }
 
+func (r *NotificationRepository) GetAllWithDeleted(u string, ctx *gin.Context) ([]*model.Notification, error) {
+	notificationsRaw, err := r.repo.FindAll("notifications", "User", u, "==", ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	notifications := make([]*model.Notification, 0)
+
+	for _, notf := range notificationsRaw {
+		notifications = append(notifications, mapNotification(notf))
+	}
+
+	return notifications, nil
+}
+
 func (r *NotificationRepository) Remove(id string, ctx *gin.Context) error {
 	notification, err := r.Get(id, ctx)
 	if err != nil {
@@ -91,8 +106,8 @@ func (r *NotificationRepository) Add(not model.Notification, ctx *gin.Context) e
 	return r.repo.Create("notifications", not.Id, not, ctx)
 }
 
-func (r *NotificationRepository) AddMultipleGeneric(message string, to []string, ctx *gin.Context) error {
-	not := model.NewNotification("", "", message, model.GenericType)
+func (r *NotificationRepository) AddMultipleGeneric(message, data, user, group, list string, to []string, ctx *gin.Context) error {
+	not := model.NewNotificationFull("", data, message, user, group, list, model.GenericType)
 	for _, user := range to {
 		not.User = user
 		err := r.Add(not, ctx)
@@ -114,10 +129,23 @@ func mapNotification(u map[string]interface{}) *model.Notification {
 	if u == nil {
 		return nil
 	}
+	if u["UserOwner"] == nil {
+		u["UserOwner"] = ""
+	}
+	if u["Group"] == nil {
+		u["Group"] = ""
+	}
+	if u["ListName"] == nil {
+		u["ListName"] = ""
+	}
+
 	notification := model.Notification{
 		Id:        u["Id"].(string),
 		User:      u["User"].(string),
 		Data:      u["Data"].(string),
+		UserOwner: u["UserOwner"].(string),
+		Group:     u["Group"].(string),
+		ListName:  u["ListName"].(string),
 		Deleted:   u["Deleted"].(bool),
 		Message:   u["Message"].(string),
 		Accepted:  u["Accepted"].(bool),

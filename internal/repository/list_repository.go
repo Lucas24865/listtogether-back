@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"strings"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func (l listRepository) Create(request model.List, ctx *gin.Context) error {
 	notMessage := fmt.Sprintf("%s ha agregado la lista: %s, en el grupo: %s", request.CreatedBy,
 		request.Name, group.Name)
 
-	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
+	err = l.notificationRepo.AddMultipleGeneric(notMessage, "", request.CreatedBy, group.Name, request.Name, group.Users, ctx)
 	if err != nil {
 		return err
 	}
@@ -75,6 +76,22 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 	if err != nil {
 		return err
 	}
+
+	changes := "Se modificaron los elementos: "
+	modifiedItems := []string{}
+
+	for i, item := range request.Items {
+		if list.Items[i].Compare(item) {
+			modifiedItems = append(modifiedItems, item.Name)
+		}
+	}
+
+	changes += strings.Join(modifiedItems, ", ")
+
+	if len(modifiedItems) == 0 {
+		changes = "No se modificaron elementos."
+	}
+
 	if !utils.Contains(group.Users, userId) {
 		return errors.New("invalid group")
 	}
@@ -87,7 +104,11 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 	notMessage := fmt.Sprintf("%s ha actualizado la lista: %s, en el grupo: %s", userId,
 		request.Name, group.Name)
 
-	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
+	if len(modifiedItems) == 0 {
+		changes = ""
+	}
+
+	err = l.notificationRepo.AddMultipleGeneric(notMessage, changes, userId, group.Name, request.Name, group.Users, ctx)
 	if err != nil {
 		return err
 	}
@@ -119,7 +140,7 @@ func (l listRepository) Delete(userId, listId string, ctx *gin.Context) error {
 	notMessage := fmt.Sprintf("%s ha agredado la lista: %s, en el grupo: %s", userId,
 		list.Name, group.Name)
 
-	err = l.notificationRepo.AddMultipleGeneric(notMessage, group.Users, ctx)
+	err = l.notificationRepo.AddMultipleGeneric(notMessage, "", userId, group.Name, list.Name, group.Users, ctx)
 	if err != nil {
 		return err
 	}

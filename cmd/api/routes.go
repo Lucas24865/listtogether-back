@@ -41,6 +41,7 @@ func mapRoutes(router *gin.Engine) {
 	notifications := base.Group("/notifications")
 	notifications.Use(middleware.JwtAuthMiddleware())
 	notifications.GET("", notifController.GetAll)
+	notifications.GET("/all", notifController.GetAllWithDeleted)
 	notifications.PUT("/accept/:id", notifController.AcceptInvite)
 	notifications.PUT("/decline/:id", notifController.DeclineInvite)
 	notifications.DELETE("/:id", notifController.Remove)
