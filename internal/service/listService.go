@@ -30,6 +30,11 @@ func (s *listService) Create(request model.List, ctx *gin.Context) error {
 }
 
 func (s *listService) Update(request model.List, user string, ctx *gin.Context) error {
+	for i, item := range request.Items {
+		if !item.Completed {
+			request.Items[i].CompletedBy = ""
+		}
+	}
 	return s.repo.Update(request, user, ctx)
 }
 
