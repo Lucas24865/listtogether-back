@@ -77,18 +77,54 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 		return err
 	}
 
-	changes := "Se modificaron los elementos: "
+	changes := ""
+	addedItems := []string{}
+	removedItems := []string{}
 	modifiedItems := []string{}
 
-	for i, item := range request.Items {
-		if list.Items[i].Compare(item) {
+	for i, item := range list.Items {
+		if request.Items[i].Compare(item) {
 			modifiedItems = append(modifiedItems, item.Name)
 		}
 	}
 
-	changes += strings.Join(modifiedItems, ", ")
+	// Detectar elementos agregados y eliminados
+	existingItemNames := make(map[string]struct{})
+	for _, item := range list.Items {
+		existingItemNames[item.Name] = struct{}{}
+	}
 
-	if len(modifiedItems) == 0 {
+	for _, item := range request.Items {
+		if _, exists := existingItemNames[item.Name]; !exists {
+			addedItems = append(addedItems, item.Name) // Elemento agregado
+		}
+	}
+
+	for _, item := range list.Items {
+		existsInRequest := false
+		for _, reqItem := range request.Items {
+			if reqItem.Name == item.Name {
+				existsInRequest = true
+				break
+			}
+		}
+		if !existsInRequest {
+			removedItems = append(removedItems, item.Name) // Elemento eliminado
+		}
+	}
+
+	// Construir el mensaje de cambios
+	if len(modifiedItems) > 0 {
+		changes += "Modificados: " + strings.Join(modifiedItems, ", ") + ". "
+	}
+	if len(addedItems) > 0 {
+		changes += "Agregados: " + strings.Join(addedItems, ", ") + ". "
+	}
+	if len(removedItems) > 0 {
+		changes += "Eliminados: " + strings.Join(removedItems, ", ") + ". "
+	}
+
+	if len(modifiedItems) == 0 && len(addedItems) == 0 && len(removedItems) == 0 {
 		changes = "No se modificaron elementos."
 	}
 
@@ -104,7 +140,7 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 	notMessage := fmt.Sprintf("%s ha actualizado la lista: %s, en el grupo: %s", userId,
 		request.Name, group.Name)
 
-	if len(modifiedItems) == 0 {
+	if len(modifiedItems) == 0 && len(addedItems) == 0 && len(removedItems) == 0 {
 		changes = ""
 	}
 
