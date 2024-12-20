@@ -82,34 +82,35 @@ func (l listRepository) Update(request model.List, userId string, ctx *gin.Conte
 	removedItems := []string{}
 	modifiedItems := []string{}
 
-	for i, item := range list.Items {
-		if request.Items[i].Compare(item) {
-			modifiedItems = append(modifiedItems, item.Name)
-		}
-	}
-
-	// Detectar elementos agregados y eliminados
+	// Crear un mapa de elementos existentes en list.Items
 	existingItemNames := make(map[string]struct{})
 	for _, item := range list.Items {
 		existingItemNames[item.Name] = struct{}{}
 	}
 
+	// Detectar elementos agregados (están en request.Items pero no en list.Items)
 	for _, item := range request.Items {
 		if _, exists := existingItemNames[item.Name]; !exists {
 			addedItems = append(addedItems, item.Name) // Elemento agregado
 		}
 	}
 
+	// Detectar elementos eliminados (están en list.Items pero no en request.Items)
+	existingRequestNames := make(map[string]struct{})
+	for _, item := range request.Items {
+		existingRequestNames[item.Name] = struct{}{}
+	}
+
 	for _, item := range list.Items {
-		existsInRequest := false
-		for _, reqItem := range request.Items {
-			if reqItem.Name == item.Name {
-				existsInRequest = true
-				break
-			}
-		}
-		if !existsInRequest {
+		if _, exists := existingRequestNames[item.Name]; !exists {
 			removedItems = append(removedItems, item.Name) // Elemento eliminado
+		}
+	}
+
+	// Detectar elementos modificados
+	for i, item := range list.Items {
+		if i < len(request.Items) && request.Items[i].Compare(item) {
+			modifiedItems = append(modifiedItems, item.Name)
 		}
 	}
 
